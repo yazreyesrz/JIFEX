@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Sun,
   Moon,
+  Heart,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -93,8 +94,21 @@ export default function Sidebar({
               className={buttonClasses(currentView === "inventario")}
             >
               <Car size={18} className="shrink-0" />
-              <span>Inventario</span>
+              <span>Catálogo</span>
             </button>
+
+            {/* 🌟 NUEVO BOTÓN DE FAVORITOS */}
+            <button
+              onClick={() => {
+                setCurrentView("favoritos");
+                setIsMobileOpen(false);
+              }}
+              className={buttonClasses(currentView === "favoritos")}
+            >
+              <Heart size={18} className="shrink-0" />
+              <span>Favoritos</span>
+            </button>
+
             <button
               onClick={() => {
                 setCurrentView("compras");
@@ -105,6 +119,7 @@ export default function Sidebar({
               <Briefcase size={18} className="shrink-0" />
               <span>Mis Compras</span>
             </button>
+
             <button
               onClick={() => {
                 setCurrentView("tracking");

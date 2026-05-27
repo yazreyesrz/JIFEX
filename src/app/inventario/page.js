@@ -19,14 +19,28 @@ import {
   HelpCircle,
   ShieldAlert,
   Hourglass,
+  Heart,
+  LayoutGrid,
+  ChevronLeft,
+  Coins,
+  ChevronDown,
+  Activity,
+  Clock,
 } from "lucide-react";
 
 export default function InventarioPage() {
   const router = useRouter();
   const [currentView, setCurrentView] = useState("inventario");
-  const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // Estados para modales personalizados
+  // Modo claro por defecto
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const [selectedBrand, setSelectedBrand] = useState(null);
+  const [favorites, setFavorites] = useState([]);
+
+  // Estado para el selector de moneda (USD por defecto)
+  const [currency, setCurrency] = useState("USD");
+
   const [alertModal, setAlertModal] = useState({
     open: false,
     title: "",
@@ -41,12 +55,19 @@ export default function InventarioPage() {
   const [sortBy, setSortBy] = useState("default");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sincronización de persistencia de tema local y redirección inteligente
   useEffect(() => {
+    // Sincronizar tema: si no hay nada, se queda en claro (false)
     const savedTheme = localStorage.getItem("jifex_theme");
-    if (savedTheme === "light") {
-      setIsDarkMode(false);
-    }
+    if (savedTheme === "dark") setIsDarkMode(true);
+    else if (savedTheme === "light") setIsDarkMode(false);
+
+    const savedFavorites = JSON.parse(
+      localStorage.getItem("jifex_favorites") || "[]",
+    );
+    setFavorites(savedFavorites);
+
+    const savedCurrency = localStorage.getItem("jifex_currency");
+    if (savedCurrency) setCurrency(savedCurrency);
 
     const targetView = localStorage.getItem("jifex_target_view");
     if (targetView) {
@@ -61,19 +82,73 @@ export default function InventarioPage() {
     localStorage.setItem("jifex_theme", newTheme ? "dark" : "light");
   };
 
+  const handleCurrencyChange = (newCurrency) => {
+    setCurrency(newCurrency);
+    localStorage.setItem("jifex_currency", newCurrency);
+  };
+
+  const toggleFavorite = (vin) => {
+    let newFavorites;
+    if (favorites.includes(vin)) {
+      newFavorites = favorites.filter((id) => id !== vin);
+    } else {
+      newFavorites = [...favorites, vin];
+    }
+    setFavorites(newFavorites);
+    localStorage.setItem("jifex_favorites", JSON.stringify(newFavorites));
+  };
+
+  // LÓGICA DE CONVERSIÓN DE MONEDA (USD, PKR, JPY)
+  const convertPrice = (priceUSDStr) => {
+    const numericPrice = parseInt(priceUSDStr.replace(/[^0-9]/g, ""));
+    if (currency === "PKR") return `₨ ${(numericPrice * 278).toLocaleString()}`;
+    if (currency === "JPY") return `¥ ${(numericPrice * 155).toLocaleString()}`;
+    return priceUSDStr; // Por defecto USD
+  };
+
   useEffect(() => {
     setIsLoading(true);
     const timer = setTimeout(() => setIsLoading(false), 300);
     return () => clearTimeout(timer);
-  }, [currentView]);
+  }, [currentView, selectedBrand, currency]);
 
-  const compradoMock = mockVehicles[0]; // Daihatsu Mira e:S
+  const compradoMock = mockVehicles[0];
 
-  // Exclusión por software: Oculta la unidad comprada del catálogo público
+  const availableBrands = [
+    ...new Set(mockVehicles.map((car) => car.modelo.split(" ")[0])),
+  ].filter(
+    (brand) =>
+      brand !== compradoMock.modelo.split(" ")[0] ||
+      mockVehicles.filter(
+        (c) => c.modelo.startsWith(brand) && c.vin !== compradoMock.vin,
+      ).length > 0,
+  );
+
+  // CONFIGURACIÓN VISUAL ELEGANTE Y MINIMALISTA PARA MARCAS
+  const brandStyles = {
+    Toyota: { bgLight: "bg-red-50", text: "text-red-600" },
+    Honda: { bgLight: "bg-blue-50", text: "text-blue-600" },
+    Suzuki: { bgLight: "bg-sky-50", text: "text-sky-600" },
+    Daihatsu: { bgLight: "bg-rose-50", text: "text-rose-600" },
+    Nissan: { bgLight: "bg-slate-100", text: "text-slate-600" },
+  };
+
+  const getBrandStyle = (brand) =>
+    brandStyles[brand] || { bgLight: "bg-amber-50", text: "text-amber-600" };
+
   const filteredVehicles = mockVehicles.filter((car) => {
     const esAutoComprado =
       car.vin.toLowerCase() === compradoMock.vin.toLowerCase();
     if (esAutoComprado) return false;
+
+    if (currentView === "favoritos" && !favorites.includes(car.vin))
+      return false;
+    if (
+      currentView === "inventario" &&
+      selectedBrand &&
+      !car.modelo.toLowerCase().startsWith(selectedBrand.toLowerCase())
+    )
+      return false;
 
     const matchesSearch =
       car.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,11 +167,9 @@ export default function InventarioPage() {
     return matchesSearch && matchesStatus && matchesYear && matchesPrice;
   });
 
-  // Algoritmo de ordenamiento avanzado (Incluye Cercanía de Entrega)
   const sortedVehicles = [...filteredVehicles].sort((a, b) => {
-    if (sortBy === "cercania") {
+    if (sortBy === "cercania")
       return (a.diasParaEntrega || 0) - (b.diasParaEntrega || 0);
-    }
     const priceA = parseInt(a.precioCNF.replace(/[^0-9]/g, ""));
     const priceB = parseInt(b.precioCNF.replace(/[^0-9]/g, ""));
     if (sortBy === "precio-asc") return priceA - priceB;
@@ -105,36 +178,227 @@ export default function InventarioPage() {
     return 0;
   });
 
+  const CarGrid = ({ vehicles }) => (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {vehicles.map((car) => (
+        <div
+          key={car.vin}
+          className={`relative overflow-hidden rounded-2xl border transition duration-300 shadow-lg flex flex-col justify-between group ${isDarkMode ? "border-slate-800 bg-[#1e293b]/40 backdrop-blur-sm hover:border-slate-700" : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-xl"}`}
+        >
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              toggleFavorite(car.vin);
+            }}
+            className={`absolute top-4 left-4 z-10 p-2 rounded-full backdrop-blur-md transition-all border cursor-pointer ${favorites.includes(car.vin) ? "bg-red-500/20 border-red-500/30" : "bg-black/40 border-white/10 hover:bg-black/60"}`}
+          >
+            <Heart
+              size={16}
+              className={`${favorites.includes(car.vin) ? "fill-red-500 text-red-500" : "text-white"}`}
+            />
+          </button>
+
+          <div
+            className={`relative h-44 w-full ${isDarkMode ? "bg-[#0b121f]" : "bg-slate-100"}`}
+          >
+            <img
+              src={car.fotos[0]}
+              alt={car.modelo}
+              className="h-full w-full object-cover"
+            />
+            <span
+              className={`absolute top-4 right-4 px-2.5 py-1 text-[9px] font-black rounded-full border uppercase tracking-wider ${car.estadoActual === "Disponible" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 backdrop-blur-md" : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 backdrop-blur-md"}`}
+            >
+              {car.estadoActual}
+            </span>
+          </div>
+
+          <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+            <div>
+              <h3
+                className={`text-md font-bold tracking-tight ${isDarkMode ? "text-[#f8fafc]" : "text-slate-900"}`}
+              >
+                {car.modelo}
+              </h3>
+              <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                CHASIS: {car.vin}
+              </p>
+            </div>
+
+            {sortBy === "cercania" && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-500 font-semibold bg-amber-500/5 px-2.5 py-1.5 rounded-lg border border-amber-500/10 w-fit">
+                <Hourglass size={12} />
+                <span>Arribo estimado: {car.diasParaEntrega || 25} días</span>
+              </div>
+            )}
+
+            <div
+              className={`grid grid-cols-2 gap-2 text-[11px] p-3 rounded-xl border ${isDarkMode ? "text-slate-400 bg-[#0b121f]/60 border-slate-800/60" : "text-slate-600 bg-slate-50 border-slate-200"}`}
+            >
+              <div className="flex items-center gap-1">
+                <Calendar size={13} className="text-slate-400" />
+                <span>Año: {car.ano}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Gauge size={13} className="text-slate-400" />
+                <span>{car.kilometraje}</span>
+              </div>
+            </div>
+            <div className="border-t border-slate-800/40 pt-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
+                  Costo CNF
+                </p>
+                <p className="text-md font-bold text-amber-500 tracking-tight">
+                  {convertPrice(car.precioCNF)}
+                </p>
+              </div>
+              <Link
+                href={`/inventario/${car.vin}`}
+                className={`inline-flex items-center gap-1 rounded-xl border px-3.5 py-2 text-xs font-bold text-amber-500 transition cursor-pointer ${isDarkMode ? "bg-[#0b121f] border-slate-700 hover:bg-amber-500 hover:text-white" : "bg-slate-50 border-slate-200 hover:bg-amber-500 hover:text-white"}`}
+              >
+                Detalles <ArrowRight size={13} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${
-        isDarkMode
-          ? "bg-[#0b121f] text-[#f1f5f9]"
-          : "bg-[#f8fafc] text-[#0f172a]"
-      }`}
+      className={`min-h-screen flex transition-colors duration-300 ${isDarkMode ? "bg-[#0b121f] text-[#f1f5f9]" : "bg-slate-50 text-[#0f172a]"}`}
     >
       <Sidebar
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={(view) => {
+          setCurrentView(view);
+          if (view === "inventario") setSelectedBrand(null);
+        }}
         setAlertModal={setAlertModal}
         setLogoutModal={setLogoutModal}
         isDarkMode={isDarkMode}
         setIsDarkMode={toggleTheme}
       />
 
-      {/* 🌟 CONTENEDOR DE ADAPTABILIDAD: md:ml-64 respeta el Sidebar */}
-      <div className="md:ml-64">
-        {/* El MAIN centra perfectamente el contenido en el espacio restante */}
+      <div className="md:ml-64 flex-1 w-full">
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-          {/* ================= VISTA 1: INVENTARIO ================= */}
-          {currentView === "inventario" && (
-            <>
+          {/* HEADER GLOBAL CON SELECTOR DE MONEDA ELEGANTE */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-end mb-4">
+            <div
+              className={`relative inline-flex items-center rounded-full border shadow-sm transition-all duration-300 hover:shadow-md ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-amber-500/50" : "bg-white border-slate-200 hover:border-amber-400"}`}
+            >
+              <div className="pl-4 pr-2 py-2 flex items-center gap-2 pointer-events-none">
+                <Coins size={14} className="text-amber-500" />
+              </div>
+              <select
+                value={currency}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
+                className={`text-[11px] font-bold outline-none cursor-pointer bg-transparent appearance-none py-2.5 pl-1 pr-8 tracking-wider ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
+              >
+                <option value="USD">USD ($)</option>
+                <option value="JPY">JPY (¥)</option>
+                <option value="PKR">PKR (₨)</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <ChevronDown
+                  size={14}
+                  className={isDarkMode ? "text-slate-500" : "text-slate-400"}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ================= VISTA 1: INVENTARIO (CATÁLOGO DE MARCAS ELEGANTE) ================= */}
+          {currentView === "inventario" && !selectedBrand && (
+            <div className="space-y-8">
               <div
-                className={`backdrop-blur-md p-5 rounded-2xl border transition-colors duration-300 shadow-xl space-y-4 ${
-                  isDarkMode
-                    ? "bg-[#1e293b]/40 border-slate-800/60"
-                    : "bg-white border-slate-200"
-                }`}
+                className={`border-b pb-4 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+              >
+                <h2
+                  className={`text-3xl font-black flex items-center gap-2 tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                >
+                  <LayoutGrid className="text-amber-500" size={26} /> Catálogo
+                  de Marcas
+                </h2>
+                <p className="text-sm text-slate-400 mt-1.5">
+                  Selecciona una marca para explorar los modelos JDM disponibles
+                  para importación.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                {availableBrands.map((brand) => {
+                  const style = getBrandStyle(brand);
+                  const count = mockVehicles.filter(
+                    (c) =>
+                      c.modelo.startsWith(brand) && c.vin !== compradoMock.vin,
+                  ).length;
+                  return (
+                    <button
+                      key={brand}
+                      onClick={() => setSelectedBrand(brand)}
+                      className={`relative overflow-hidden flex flex-col items-center justify-center p-10 rounded-[2rem] border transition-all duration-500 ease-out group cursor-pointer text-center ${
+                        isDarkMode
+                          ? `bg-[#1e293b]/30 border-slate-800/60 hover:bg-[#1e293b]/70 hover:border-slate-700`
+                          : `bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-2xl hover:-translate-y-1`
+                      }`}
+                    >
+                      {/* Ícono gigante de agua de fondo */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] group-hover:opacity-[0.04] transition-opacity duration-500 group-hover:scale-110">
+                        <Car size={180} className={style.text} />
+                      </div>
+
+                      {/* Ícono central flotante */}
+                      <div
+                        className={`h-16 w-16 mb-6 rounded-2xl flex items-center justify-center shadow-inner transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1.5 ${isDarkMode ? "bg-[#0f172a]" : style.bgLight}`}
+                      >
+                        <Car size={28} className={style.text} />
+                      </div>
+
+                      <h3
+                        className={`text-2xl font-black tracking-tight mb-2 relative z-10 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                      >
+                        {brand}
+                      </h3>
+                      <p
+                        className={`text-[10px] font-bold uppercase tracking-widest relative z-10 ${style.text}`}
+                      >
+                        {count} Modelos
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ================= VISTA 1.1: INVENTARIO (MODELOS DE UNA MARCA) ================= */}
+          {currentView === "inventario" && selectedBrand && (
+            <>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setSelectedBrand(null)}
+                  className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800 text-slate-400 hover:text-amber-500" : "bg-white border-slate-200 text-slate-600 hover:text-amber-600 shadow-sm"}`}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <div>
+                  <h2
+                    className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                  >
+                    {selectedBrand}
+                  </h2>
+                  <p className="text-xs text-slate-400 font-mono uppercase tracking-widest">
+                    Modelos Disponibles
+                  </p>
+                </div>
+              </div>
+
+              {/* Barra de Filtros */}
+              <div
+                className={`backdrop-blur-md p-5 rounded-2xl border transition-colors duration-300 shadow-xl space-y-4 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
               >
                 <div className="flex flex-col lg:flex-row gap-4">
                   <div className="relative flex-1">
@@ -144,17 +408,12 @@ export default function InventarioPage() {
                     />
                     <input
                       type="text"
-                      placeholder="Buscar por modelo o número de chasis (VIN)..."
+                      placeholder={`Buscar modelos de ${selectedBrand}...`}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:border-amber-500 transition ${
-                        isDarkMode
-                          ? "border-slate-800 bg-[#0b121f]/60 text-white placeholder-slate-500"
-                          : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"
-                      }`}
+                      className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:border-amber-500 transition ${isDarkMode ? "border-slate-800 bg-[#0b121f]/60 text-white placeholder-slate-500" : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"}`}
                     />
                   </div>
-
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <select
                       value={statusFilter}
@@ -208,102 +467,60 @@ export default function InventarioPage() {
                       <div
                         className={`h-44 rounded-xl w-full ${isDarkMode ? "bg-slate-900" : "bg-slate-200"}`}
                       />
-                      <div
-                        className={`h-5 rounded w-2/3 ${isDarkMode ? "bg-slate-900" : "bg-slate-200"}`}
-                      />
-                      <div
-                        className={`h-12 rounded-xl w-full ${isDarkMode ? "bg-slate-900" : "bg-slate-200"}`}
-                      />
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {sortedVehicles.map((car) => (
-                    <div
-                      key={car.vin}
-                      className={`overflow-hidden rounded-2xl border transition duration-300 shadow-lg flex flex-col justify-between ${
-                        isDarkMode
-                          ? "border-slate-800 bg-[#1e293b]/40 backdrop-blur-sm hover:border-slate-700"
-                          : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-xl"
-                      }`}
-                    >
-                      <div
-                        className={`relative h-44 w-full ${isDarkMode ? "bg-[#0b121f]" : "bg-slate-100"}`}
-                      >
-                        <img
-                          src={car.fotos[0]}
-                          alt={car.modelo}
-                          className="h-full w-full object-cover"
-                        />
-                        <span
-                          className={`absolute top-4 right-4 px-2.5 py-1 text-[9px] font-black rounded-full border uppercase tracking-wider ${
-                            car.estadoActual === "Disponible"
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                              : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
-                          }`}
-                        >
-                          {car.estadoActual}
-                        </span>
-                      </div>
-                      <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3
-                            className={`text-md font-bold tracking-tight ${isDarkMode ? "text-[#f8fafc]" : "text-slate-900"}`}
-                          >
-                            {car.modelo}
-                          </h3>
-                          <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                            CHASIS: {car.vin}
-                          </p>
-                        </div>
-
-                        {sortBy === "cercania" && (
-                          <div className="flex items-center gap-1.5 text-xs text-amber-500 font-semibold bg-amber-500/5 px-2.5 py-1.5 rounded-lg border border-amber-500/10 w-fit">
-                            <Hourglass size={12} />
-                            <span>
-                              Arribo estimado: {car.diasParaEntrega || 25} días
-                            </span>
-                          </div>
-                        )}
-
-                        <div
-                          className={`grid grid-cols-2 gap-2 text-[11px] p-3 rounded-xl border ${isDarkMode ? "text-slate-400 bg-[#0b121f]/60 border-slate-800/60" : "text-slate-600 bg-slate-50 border-slate-200"}`}
-                        >
-                          <div className="flex items-center gap-1">
-                            <Calendar size={13} className="text-slate-400" />
-                            <span>Año: {car.ano}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Gauge size={13} className="text-slate-400" />
-                            <span>{car.kilometraje}</span>
-                          </div>
-                        </div>
-                        <div className="border-t border-slate-800/40 pt-3.5 flex items-center justify-between">
-                          <div>
-                            <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
-                              Costo CNF
-                            </p>
-                            <p className="text-md font-bold text-amber-500 tracking-tight">
-                              {car.precioCNF}
-                            </p>
-                          </div>
-                          <Link
-                            href={`/inventario/${car.vin}`}
-                            className={`inline-flex items-center gap-1 rounded-xl border px-3.5 py-2 text-xs font-bold text-amber-500 transition cursor-pointer ${isDarkMode ? "bg-[#0b121f] border-slate-700 hover:bg-amber-500 hover:text-white" : "bg-slate-50 border-slate-200 hover:bg-amber-500 hover:text-white"}`}
-                          >
-                            Detalles <ArrowRight size={13} />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <CarGrid vehicles={sortedVehicles} />
               )}
             </>
           )}
 
-          {/* ================= VISTA 2: MIS COMPRAS ================= */}
+          {/* ================= VISTA: FAVORITOS ================= */}
+          {currentView === "favoritos" && (
+            <div className="space-y-6">
+              <div
+                className={`border-b pb-3 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+              >
+                <h2
+                  className={`text-2xl font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                >
+                  <Heart className="text-red-500 fill-red-500/20" size={22} />{" "}
+                  Mis Vehículos Favoritos
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Unidades que has guardado para seguimiento o futura compra.
+                </p>
+              </div>
+
+              {favorites.length === 0 ? (
+                <div
+                  className={`flex flex-col items-center justify-center py-20 rounded-2xl border border-dashed ${isDarkMode ? "border-slate-800 bg-[#1e293b]/20" : "border-slate-300 bg-slate-50"}`}
+                >
+                  <Heart size={48} className="text-slate-500 mb-4 opacity-50" />
+                  <p className="text-lg font-bold text-slate-400">
+                    Aún no tienes favoritos
+                  </p>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Explora el catálogo y guarda los vehículos que te interesen.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCurrentView("inventario");
+                      setSelectedBrand(null);
+                    }}
+                    className="mt-6 px-6 py-2.5 rounded-xl bg-amber-500 text-black font-bold text-xs uppercase tracking-wider hover:bg-amber-400 transition cursor-pointer"
+                  >
+                    Ir al Catálogo
+                  </button>
+                </div>
+              ) : (
+                <CarGrid vehicles={sortedVehicles} />
+              )}
+            </div>
+          )}
+
+          {/* ================= VISTA: MIS COMPRAS ================= */}
           {currentView === "compras" && (
             <div className="space-y-6">
               <div
@@ -353,7 +570,7 @@ export default function InventarioPage() {
                       <p
                         className={`font-bold text-sm ${isDarkMode ? "text-white" : "text-slate-800"}`}
                       >
-                        {compradoMock.precioCNF}
+                        {convertPrice(compradoMock.precioCNF)}
                       </p>
                     </div>
                     <div>
@@ -374,7 +591,7 @@ export default function InventarioPage() {
                   <div className="pt-2 flex justify-end">
                     <Link
                       href={`/inventario/${compradoMock.vin}`}
-                      className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold text-amber-500 transition ${isDarkMode ? "bg-[#0b121f] border-slate-700 hover:bg-amber-500" : "bg-slate-50 border-slate-200 hover:bg-amber-500 hover:text-white"}`}
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold text-amber-500 transition cursor-pointer ${isDarkMode ? "bg-[#0b121f] border-slate-700 hover:bg-amber-500" : "bg-slate-50 border-slate-200 hover:bg-amber-500 hover:text-white"}`}
                     >
                       Ver Tracking Completo <ArrowRight size={12} />
                     </Link>
@@ -384,7 +601,7 @@ export default function InventarioPage() {
             </div>
           )}
 
-          {/* ================= VISTA 3: TRACKING GLOBAL (ENRIQUECIDO) ================= */}
+          {/* ================= VISTA: TRACKING GLOBAL RESTAURADA ================= */}
           {currentView === "tracking" && (
             <div className="space-y-6">
               <div
@@ -490,13 +707,17 @@ export default function InventarioPage() {
                   <div className="space-y-2 pt-1 text-xs">
                     <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
                       <span className="text-slate-400">Nombre Oficial:</span>
-                      <span className="font-bold text-slate-200">
+                      <span
+                        className={`font-bold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                      >
                         MV JFX Pioneer III
                       </span>
                     </div>
                     <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
                       <span className="text-slate-400">Línea Naviera:</span>
-                      <span className="font-bold text-slate-200">
+                      <span
+                        className={`font-bold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                      >
                         Ocean Network (ONE)
                       </span>
                     </div>
@@ -520,20 +741,24 @@ export default function InventarioPage() {
                   <div className="space-y-2 pt-1 text-xs">
                     <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
                       <span className="text-slate-400">Puerto Arribo:</span>
-                      <span className="font-bold text-slate-200">
+                      <span
+                        className={`font-bold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                      >
                         Karachi Port (Pakistán)
                       </span>
                     </div>
                     <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
                       <span className="text-slate-400">ETA Oficial:</span>
-                      <span className="font-bold text-slate-200 flex items-center gap-1">
+                      <span
+                        className={`font-bold flex items-center gap-1 ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                      >
                         <Calendar size={12} className="text-slate-400" />{" "}
                         30/05/2026
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Condiciones:</span>
-                      <span className="font-bold text-emerald-400 flex items-center gap-1">
+                      <span className="font-bold text-emerald-500 flex items-center gap-1">
                         Operando Normal
                       </span>
                     </div>
@@ -541,7 +766,7 @@ export default function InventarioPage() {
                 </div>
               </div>
 
-              {/* 🌟 NUEVO: Bitácora de Eventos Logísticos de la Flota (Log de Eventos) */}
+              {/* 🌟 Bitácora de Eventos Logísticos de la Flota (Log de Eventos) */}
               <div
                 className={`rounded-2xl border p-6 space-y-4 shadow-xl overflow-hidden ${isDarkMode ? "border-slate-800 bg-[#1e293b]/40" : "bg-white border-slate-200"}`}
               >
