@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   Heart,
+  LayoutGrid,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -26,13 +27,14 @@ export default function Sidebar({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // 🌟 MEJORA GLOBAL DE CLASES: Se añadió focus:outline-none y active:scale-95 para clics elegantes
   const buttonClasses = (isActive) =>
-    `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 uppercase tracking-wider text-left cursor-pointer ${
+    `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-150 uppercase tracking-wider text-left cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-[0.97] ${
       isActive
         ? "bg-[#1e293b] text-[#f59e0b] shadow-md border-l-4 border-[#f59e0b]"
         : isDarkMode
-          ? "text-slate-400 hover:bg-[#1e293b]/50 hover:text-white"
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          ? "text-slate-400 hover:bg-[#1e293b]/50 hover:text-white focus:bg-[#1e293b]/50"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100"
     }`;
 
   return (
@@ -43,7 +45,7 @@ export default function Sidebar({
       >
         <button
           onClick={() => setCurrentView("inventario")}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 outline-none focus:outline-none focus:ring-0"
         >
           <span
             className={`text-xl font-bold tracking-wider ${isDarkMode ? "text-white" : "text-slate-900"}`}
@@ -53,7 +55,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="text-slate-400 hover:text-white focus:outline-none p-1 rounded-lg"
+          className="text-slate-400 hover:text-white focus:outline-none focus:ring-0 p-1 rounded-lg transition-colors active:scale-95"
         >
           {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -61,7 +63,7 @@ export default function Sidebar({
 
       {/* PANEL LATERAL SIDEBAR */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r flex flex-col justify-between p-5 transform transition-transform duration-300 md:translate-x-0 ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"} ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r flex flex-col justify-between p-5 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"} ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="space-y-8">
           <div
@@ -72,7 +74,7 @@ export default function Sidebar({
                 setCurrentView("inventario");
                 setIsMobileOpen(false);
               }}
-              className="flex items-center gap-2 text-left"
+              className="flex items-center gap-2 text-left outline-none focus:outline-none focus:ring-0 active:scale-95 transition-transform"
             >
               <span
                 className={`text-2xl font-extrabold tracking-wider ${isDarkMode ? "text-white" : "text-slate-900"}`}
@@ -80,7 +82,7 @@ export default function Sidebar({
                 JIF<span className="text-[#f59e0b]">EX</span>
               </span>
               <span className="text-[9px] uppercase bg-[#1e293b] text-slate-400 px-2 py-0.5 rounded-md font-mono">
-                v1.0
+                v1.1
               </span>
             </button>
           </div>
@@ -93,11 +95,10 @@ export default function Sidebar({
               }}
               className={buttonClasses(currentView === "inventario")}
             >
-              <Car size={18} className="shrink-0" />
+              <LayoutGrid size={18} className="shrink-0" />
               <span>Catálogo</span>
             </button>
 
-            {/* 🌟 NUEVO BOTÓN DE FAVORITOS */}
             <button
               onClick={() => {
                 setCurrentView("favoritos");
@@ -117,7 +118,7 @@ export default function Sidebar({
               className={buttonClasses(currentView === "compras")}
             >
               <Briefcase size={18} className="shrink-0" />
-              <span>Mis Compras</span>
+              <span>Mi Flota</span>
             </button>
 
             <button
@@ -136,9 +137,10 @@ export default function Sidebar({
         <div
           className={`space-y-4 border-t pt-4 relative ${isDarkMode ? "border-[#1e293b]/60" : "border-slate-200"}`}
         >
+          {/* Botón de cambio de tema corregido */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border text-xs font-bold uppercase tracking-wider transition duration-200 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/30 border-slate-800 text-amber-400 hover:bg-[#1e293b]/60" : "bg-slate-50 border-slate-200 text-amber-600 hover:bg-slate-100"}`}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition duration-200 cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-[0.97] ${isDarkMode ? "bg-[#1e293b]/30 border-slate-800 text-amber-400 hover:bg-[#1e293b]/60" : "bg-slate-50 border-slate-200 text-amber-600 hover:bg-slate-100"}`}
           >
             <span className="flex items-center gap-2">
               {isDarkMode ? <Moon size={14} /> : <Sun size={14} />}
@@ -146,15 +148,6 @@ export default function Sidebar({
             </span>
             <span className="text-[9px] text-slate-400 font-mono">Cambiar</span>
           </button>
-
-          <div
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/80" : "bg-slate-50 border-slate-200"}`}
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0"></div>
-            <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider font-semibold">
-              Modo Evaluador
-            </span>
-          </div>
 
           {isProfileOpen && (
             <div
@@ -173,15 +166,16 @@ export default function Sidebar({
                 </p>
               </div>
               <button
-                onClick={() =>
+                onClick={() => {
                   setAlertModal({
                     open: true,
                     title: "Configuración de Cuenta",
                     message:
-                      "Área protegida en v1.0. Gestiona tus datos desde aquí en la Fase 2.",
-                  })
-                }
-                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-left cursor-pointer ${isDarkMode ? "text-slate-300 hover:bg-[#1e293b] hover:text-[#f59e0b]" : "text-slate-600 hover:bg-slate-50 hover:text-amber-600"}`}
+                      "Área protegida en v1.1. Gestiona tus datos desde aquí en la Fase 2.",
+                  });
+                  setIsProfileOpen(false);
+                }}
+                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-left cursor-pointer outline-none focus:outline-none focus:ring-0 active:bg-slate-500/10 ${isDarkMode ? "text-slate-300 hover:bg-[#1e293b] hover:text-[#f59e0b]" : "text-slate-600 hover:bg-slate-50 hover:text-amber-600"}`}
               >
                 <User size={14} /> Ver mi cuenta
               </button>
@@ -191,16 +185,17 @@ export default function Sidebar({
                   setIsProfileOpen(false);
                   setLogoutModal(true);
                 }}
-                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide border-t mt-1 transition-colors text-left cursor-pointer ${isDarkMode ? "text-red-400 hover:bg-red-950/20 border-[#1e293b]" : "text-red-600 hover:bg-red-50 border-slate-100"}`}
+                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide border-t mt-1 transition-colors text-left cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95 ${isDarkMode ? "text-red-400 hover:bg-red-950/20 border-[#1e293b]" : "text-red-600 hover:bg-red-50 border-slate-100"}`}
               >
                 <LogOut size={14} /> Cerrar sesión
               </button>
             </div>
           )}
 
+          {/* Botón de Mi Cuenta corregido */}
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`w-full flex items-center justify-between p-2 rounded-xl border transition duration-200 text-left focus:outline-none cursor-pointer ${isDarkMode ? "bg-[#1e293b]/30 border-slate-800/80 hover:bg-[#1e293b]/60" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
+            className={`w-full flex items-center justify-between p-2 rounded-xl border transition duration-200 text-left focus:outline-none focus:ring-0 outline-none cursor-pointer active:scale-[0.97] ${isDarkMode ? "bg-[#1e293b]/30 border-slate-800/80 hover:bg-[#1e293b]/60" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-[#f59e0b] text-[#0f172a] font-black flex items-center justify-center text-sm shadow-md">
