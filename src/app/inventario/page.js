@@ -9,7 +9,7 @@ import {
   HelpCircle,
   ShieldAlert,
   Globe,
-  Clock, // 🌟 AÑADIDO: Faltaba importar este ícono para el modal
+  Clock,
 } from "lucide-react";
 import { mockVehicles } from "@/data/mockVehicles";
 
@@ -34,14 +34,15 @@ const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
     options.find((o) => o.value === currency)?.label || "USD ($)";
 
   return (
-    <div className="relative z-50">
+    // 🌟 CORRECCIÓN: Bajamos el z-index a 30 para que no pase por encima del Sidebar móvil
+    <div className="relative z-30">
       <button
         onClick={() => setIsOpen(!isOpen)}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-amber-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-amber-500/50 text-white" : "bg-white border-slate-200 hover:border-amber-400 text-slate-800"}`}
+        className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-amber-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-amber-500/50 text-white" : "bg-white border-slate-200 hover:border-amber-400 text-slate-800"}`}
       >
         <Coins size={14} className="text-amber-500" />
-        <span className="text-[11px] font-bold tracking-wider">
+        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider">
           {selectedLabel}
         </span>
         <ChevronDown
@@ -95,14 +96,15 @@ const LanguageDropdown = ({ isDarkMode }) => {
   };
 
   return (
-    <div className="relative z-50">
+    // 🌟 CORRECCIÓN: Bajamos el z-index a 30
+    <div className="relative z-30">
       <button
         onClick={() => setIsOpen(!isOpen)}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-blue-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-blue-500/50 text-white" : "bg-white border-slate-200 hover:border-blue-400 text-slate-800"}`}
+        className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-blue-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-blue-500/50 text-white" : "bg-white border-slate-200 hover:border-blue-400 text-slate-800"}`}
       >
         <Globe size={14} className="text-blue-500" />
-        <span className="text-[11px] font-bold tracking-wider">
+        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider">
           {selectedLabel}
         </span>
         <ChevronDown
@@ -132,9 +134,7 @@ const LanguageDropdown = ({ isDarkMode }) => {
 
 export default function InventarioPage() {
   const router = useRouter();
-  // 🌟 CORREGIDO: Faltaba sacar la "t" del useTranslation
   const { t, i18n } = useTranslation();
-
   const [currentView, setCurrentView] = useState("inventario");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState(null);
@@ -144,6 +144,7 @@ export default function InventarioPage() {
     open: false,
     title: "",
     message: "",
+    iconType: "info",
   });
   const [logoutModal, setLogoutModal] = useState(false);
 
@@ -156,7 +157,6 @@ export default function InventarioPage() {
     const savedCurrency = localStorage.getItem("jifex_currency");
     if (savedCurrency) setCurrency(savedCurrency);
 
-    // Recuperar idioma guardado
     const savedLanguage = localStorage.getItem("jifex_language");
     if (savedLanguage) {
       i18n.changeLanguage(savedLanguage);
@@ -191,8 +191,9 @@ export default function InventarioPage() {
   };
 
   return (
+    // 🌟 CORRECCIÓN: Añadido flex-col md:flex-row para que en móvil respete el formato de columna
     <div
-      className={`min-h-screen flex transition-colors duration-300 ${isDarkMode ? "bg-[#0b121f] text-[#f1f5f9]" : "bg-slate-50 text-[#0f172a]"}`}
+      className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${isDarkMode ? "bg-[#0b121f] text-[#f1f5f9]" : "bg-slate-50 text-[#0f172a]"}`}
     >
       <Sidebar
         currentView={currentView}
@@ -209,7 +210,8 @@ export default function InventarioPage() {
       <div className="md:ml-64 flex-1 w-full">
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
           {/* HEADER GLOBAL CON SELECTORES */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-end mb-4 gap-3 relative z-40">
+          {/* 🌟 CORRECCIÓN: flex-row para que se mantengan uno al lado del otro incluso en móvil */}
+          <div className="flex flex-row items-center justify-end mb-6 gap-2 sm:gap-3 relative z-30">
             <LanguageDropdown isDarkMode={isDarkMode} />
             <CurrencyDropdown
               currency={currency}
