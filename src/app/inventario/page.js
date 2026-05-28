@@ -9,6 +9,7 @@ import {
   HelpCircle,
   ShieldAlert,
   Globe,
+  Clock, // 🌟 AÑADIDO: Faltaba importar este ícono para el modal
 } from "lucide-react";
 import { mockVehicles } from "@/data/mockVehicles";
 
@@ -72,7 +73,7 @@ const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
   );
 };
 
-// 🌟 NUEVO: Componente Dropdown Exclusivo para el Idioma
+// Componente Dropdown Exclusivo para el Idioma
 const LanguageDropdown = ({ isDarkMode }) => {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -131,7 +132,9 @@ const LanguageDropdown = ({ isDarkMode }) => {
 
 export default function InventarioPage() {
   const router = useRouter();
-  const { i18n } = useTranslation();
+  // 🌟 CORREGIDO: Faltaba sacar la "t" del useTranslation
+  const { t, i18n } = useTranslation();
+
   const [currentView, setCurrentView] = useState("inventario");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState(null);
@@ -249,13 +252,20 @@ export default function InventarioPage() {
         </main>
       </div>
 
+      {/* MODALES TRADUCIDOS */}
       {alertModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-300">
           <div
             className={`w-full max-w-sm rounded-3xl border p-7 shadow-2xl text-center space-y-5 transform transition-all duration-300 scale-100 ${isDarkMode ? "border-slate-800 bg-[#111827]" : "border-slate-100 bg-white"}`}
           >
-            <div className="mx-auto w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-              <HelpCircle size={26} />
+            <div
+              className={`mx-auto w-14 h-14 rounded-full flex items-center justify-center border ${alertModal.iconType === "clock" ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400 animate-pulse" : "bg-amber-500/10 border-amber-500/20 text-amber-500"}`}
+            >
+              {alertModal.iconType === "clock" ? (
+                <Clock size={26} />
+              ) : (
+                <HelpCircle size={26} />
+              )}
             </div>
             <div className="space-y-1.5">
               <h3
@@ -271,11 +281,16 @@ export default function InventarioPage() {
             </div>
             <button
               onClick={() =>
-                setAlertModal({ open: false, title: "", message: "" })
+                setAlertModal({
+                  open: false,
+                  title: "",
+                  message: "",
+                  iconType: "info",
+                })
               }
               className="w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-[#0f172a] font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95 shadow-md shadow-amber-500/10"
             >
-              Entendido
+              {t("modals.understood")}
             </button>
           </div>
         </div>
@@ -293,12 +308,12 @@ export default function InventarioPage() {
               <h3
                 className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
               >
-                Cerrar Sesión
+                {t("modals.logout_title")}
               </h3>
               <p
                 className={`text-xs leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}
               >
-                ¿Estás seguro de que deseas salir del portal de JIFEX?
+                {t("modals.logout_desc")}
               </p>
             </div>
             <div className="flex gap-3">
@@ -306,7 +321,7 @@ export default function InventarioPage() {
                 onClick={() => setLogoutModal(false)}
                 className={`flex-1 rounded-xl border font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95 ${isDarkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300" : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"}`}
               >
-                Cancelar
+                {t("modals.cancel")}
               </button>
               <button
                 onClick={() => {
@@ -315,7 +330,7 @@ export default function InventarioPage() {
                 }}
                 className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95"
               >
-                Confirmar
+                {t("modals.confirm")}
               </button>
             </div>
           </div>

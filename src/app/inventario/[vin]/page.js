@@ -623,7 +623,7 @@ export default function DetalleVehiculoPage({ params }) {
         </main>
       </div>
 
-      {/* MODALES */}
+      {/* MODALES TRADUCIDOS */}
       {alertModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-300">
           <div
@@ -661,7 +661,7 @@ export default function DetalleVehiculoPage({ params }) {
               }
               className="w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-[#0f172a] font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95 shadow-md shadow-amber-500/10"
             >
-              Entendido
+              {t("modals.understood")}
             </button>
           </div>
         </div>
@@ -679,12 +679,12 @@ export default function DetalleVehiculoPage({ params }) {
               <h3
                 className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
               >
-                Cerrar Sesión
+                {t("modals.logout_title")}
               </h3>
               <p
                 className={`text-xs leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}
               >
-                ¿Estás seguro de que deseas salir del portal de JIFEX?
+                {t("modals.logout_desc")}
               </p>
             </div>
             <div className="flex gap-3">
@@ -692,7 +692,7 @@ export default function DetalleVehiculoPage({ params }) {
                 onClick={() => setLogoutModal(false)}
                 className={`flex-1 rounded-xl border font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95 ${isDarkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300" : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"}`}
               >
-                Cancelar
+                {t("modals.cancel")}
               </button>
               <button
                 onClick={() => {
@@ -701,7 +701,7 @@ export default function DetalleVehiculoPage({ params }) {
                 }}
                 className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95"
               >
-                Confirmar
+                {t("modals.confirm")}
               </button>
             </div>
           </div>

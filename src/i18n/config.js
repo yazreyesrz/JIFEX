@@ -44,6 +44,20 @@ i18n.use(initReactI18next).init({
           "4WD": "4WD",
           "2WD": "2WD",
         },
+        modals: {
+          logout_title: "CERRAR SESIÓN",
+          logout_desc: "¿Estás seguro de que deseas salir del portal de JIFEX?",
+          cancel: "CANCELAR",
+          confirm: "CONFIRMAR",
+          understood: "ENTENDIDO",
+        },
+        login: {
+          subtitle: "PLATAFORMA DE INVENTARIO",
+          evaluator_access: "Acceso Evaluador",
+          username: "USUARIO",
+          password: "CONTRASEÑA",
+          submit: "ACCEDER A JIFEX",
+        },
         catalog: {
           title: "Catálogo de Marcas",
           subtitle:
@@ -208,6 +222,20 @@ i18n.use(initReactI18next).init({
           "4WD": "4WD",
           "2WD": "2WD",
         },
+        modals: {
+          logout_title: "LOG OUT",
+          logout_desc: "Are you sure you want to exit the JIFEX portal?",
+          cancel: "CANCEL",
+          confirm: "CONFIRM",
+          understood: "UNDERSTOOD",
+        },
+        login: {
+          subtitle: "INVENTORY PLATFORM",
+          evaluator_access: "Evaluator Access",
+          username: "USERNAME",
+          password: "PASSWORD",
+          submit: "LOGIN TO JIFEX",
+        },
         catalog: {
           title: "Brand Catalog",
           subtitle:
@@ -370,6 +398,20 @@ i18n.use(initReactI18next).init({
           "4WD": "4WD",
           "2WD": "2WD",
         },
+        modals: {
+          logout_title: "ログアウト",
+          logout_desc: "JIFEXポータルから退出してもよろしいですか？",
+          cancel: "キャンセル",
+          confirm: "確認",
+          understood: "了解",
+        },
+        login: {
+          subtitle: "在庫プラットフォーム",
+          evaluator_access: "評価者アクセス",
+          username: "ユーザー名",
+          password: "パスワード",
+          submit: "JIFEXにログイン",
+        },
         catalog: {
           title: "ブランドカタログ",
           subtitle:
@@ -531,6 +573,20 @@ i18n.use(initReactI18next).init({
           "5 Puertas": "5도어",
           "4WD": "4WD",
           "2WD": "2WD",
+        },
+        modals: {
+          logout_title: "로그아웃",
+          logout_desc: "JIFEX 포털을 종료하시겠습니까?",
+          cancel: "취소",
+          confirm: "확인",
+          understood: "확인",
+        },
+        login: {
+          subtitle: "재고 플랫폼",
+          evaluator_access: "평가자 액세스",
+          username: "사용자 이름",
+          password: "비밀번호",
+          submit: "JIFEX 로그인",
         },
         catalog: {
           title: "브랜드 카탈로그",
