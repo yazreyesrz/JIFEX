@@ -6,10 +6,10 @@ import {
   ChevronLeft,
   ChevronDown,
 } from "lucide-react";
+import { useTranslation } from "react-i18next"; // 🌟 Importamos el motor de traducción
 import CarGrid from "../shared/CarGrid";
 import { mockVehicles } from "@/data/mockVehicles";
 
-// Componente Dropdown 100% Personalizado
 const CustomDropdown = ({ value, options, onChange, isDarkMode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find((o) => o.value === value) || options[0];
@@ -77,6 +77,7 @@ export default function CatalogoView({
   convertPrice,
   compradoMock,
 }) {
+  const { t } = useTranslation(); // 🌟 Inicializamos el hook
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [yearFilter, setYearFilter] = useState("Todos");
@@ -162,12 +163,11 @@ export default function CatalogoView({
           <h2
             className={`text-3xl font-black flex items-center gap-2 tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
           >
-            <LayoutGrid className="text-amber-500" size={26} /> Catálogo de
-            Marcas
+            <LayoutGrid className="text-amber-500" size={26} />{" "}
+            {t("catalog.title")}
           </h2>
           <p className="text-sm text-slate-400 mt-1.5">
-            Selecciona una marca para explorar los modelos JDM disponibles para
-            importación.
+            {t("catalog.subtitle")}
           </p>
         </div>
 
@@ -199,7 +199,7 @@ export default function CatalogoView({
                 <p
                   className={`text-[10px] font-bold uppercase tracking-widest relative z-10 ${style.text}`}
                 >
-                  {count} Modelos
+                  {count} {t("catalog.models_count")}
                 </p>
               </button>
             );
@@ -225,12 +225,11 @@ export default function CatalogoView({
             {selectedBrand}
           </h2>
           <p className="text-xs text-slate-400 font-mono uppercase tracking-widest">
-            Modelos Disponibles
+            {t("catalog.available_models")}
           </p>
         </div>
       </div>
 
-      {/* 🌟 SOLUCIÓN: relative z-30 añadido aquí para que los dropdowns se pongan encima de las tarjetas de los autos */}
       <div
         className={`relative z-30 backdrop-blur-md p-5 rounded-3xl border transition-colors duration-300 shadow-xl space-y-4 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
       >
@@ -242,7 +241,7 @@ export default function CatalogoView({
             />
             <input
               type="text"
-              placeholder={`Buscar modelos de ${selectedBrand}...`}
+              placeholder={`${t("catalog.search_placeholder")} ${selectedBrand}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "border-slate-800 bg-[#0b121f]/60 text-white placeholder-slate-500" : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"}`}
@@ -254,9 +253,12 @@ export default function CatalogoView({
               onChange={setStatusFilter}
               isDarkMode={isDarkMode}
               options={[
-                { label: "Todos los Estados", value: "Todos" },
-                { label: "Disponible", value: "Disponible" },
-                { label: "En tránsito", value: "En tránsito" },
+                { label: t("catalog.filters.all_states"), value: "Todos" },
+                { label: t("catalog.filters.available"), value: "Disponible" },
+                {
+                  label: t("catalog.filters.in_transit"),
+                  value: "En tránsito",
+                },
               ]}
             />
             <CustomDropdown
@@ -264,9 +266,9 @@ export default function CatalogoView({
               onChange={setYearFilter}
               isDarkMode={isDarkMode}
               options={[
-                { label: "Todos los Años", value: "Todos" },
-                { label: "Año: 2022", value: "2022" },
-                { label: "Año: 2023", value: "2023" },
+                { label: t("catalog.filters.all_years"), value: "Todos" },
+                { label: `${t("catalog.filters.year")} 2022`, value: "2022" },
+                { label: `${t("catalog.filters.year")} 2023`, value: "2023" },
               ]}
             />
             <CustomDropdown
@@ -274,9 +276,9 @@ export default function CatalogoView({
               onChange={setPriceFilter}
               isDarkMode={isDarkMode}
               options={[
-                { label: "Cualquier Precio", value: "Todos" },
-                { label: "Menos de $7,000 USD", value: "bajo" },
-                { label: "$7,000 USD o más", value: "alto" },
+                { label: t("catalog.filters.any_price"), value: "Todos" },
+                { label: t("catalog.filters.under_7k"), value: "bajo" },
+                { label: t("catalog.filters.over_7k"), value: "alto" },
               ]}
             />
             <CustomDropdown
@@ -284,17 +286,16 @@ export default function CatalogoView({
               onChange={setSortBy}
               isDarkMode={isDarkMode}
               options={[
-                { label: "Ordenar: Defecto", value: "default" },
-                { label: "⌛ Cercanía", value: "cercania" },
-                { label: "Menor a Mayor", value: "precio-asc" },
-                { label: "Mayor a Menor", value: "precio-desc" },
+                { label: t("catalog.filters.sort_default"), value: "default" },
+                { label: t("catalog.filters.sort_near"), value: "cercania" },
+                { label: t("catalog.filters.sort_asc"), value: "precio-asc" },
+                { label: t("catalog.filters.sort_desc"), value: "precio-desc" },
               ]}
             />
           </div>
         </div>
       </div>
 
-      {/* Tarjetas de autos (Ahora quedarán siempre debajo de los menús) */}
       <div className="relative z-10">
         {isLoading ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">

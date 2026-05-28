@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Car,
   Briefcase,
@@ -27,7 +28,9 @@ export default function Sidebar({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // 🌟 MEJORA GLOBAL DE CLASES: Se añadió focus:outline-none y active:scale-95 para clics elegantes
+  // 🌟 Inicializamos el hook de traducción
+  const { t } = useTranslation();
+
   const buttonClasses = (isActive) =>
     `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-150 uppercase tracking-wider text-left cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-[0.97] ${
       isActive
@@ -39,7 +42,6 @@ export default function Sidebar({
 
   return (
     <>
-      {/* CABECERA PARA MÓVIL */}
       <div
         className={`md:hidden flex items-center justify-between border-b px-4 py-4 sticky top-0 z-50 transition-colors ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
       >
@@ -61,7 +63,6 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* PANEL LATERAL SIDEBAR */}
       <aside
         className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r flex flex-col justify-between p-5 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"} ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
@@ -88,6 +89,7 @@ export default function Sidebar({
           </div>
 
           <nav className="space-y-1.5">
+            {/* 🌟 Usamos t('sidebar.llave') para inyectar el texto en el idioma correcto */}
             <button
               onClick={() => {
                 setCurrentView("inventario");
@@ -96,9 +98,8 @@ export default function Sidebar({
               className={buttonClasses(currentView === "inventario")}
             >
               <LayoutGrid size={18} className="shrink-0" />
-              <span>Catálogo</span>
+              <span>{t("sidebar.catalog")}</span>
             </button>
-
             <button
               onClick={() => {
                 setCurrentView("favoritos");
@@ -107,9 +108,8 @@ export default function Sidebar({
               className={buttonClasses(currentView === "favoritos")}
             >
               <Heart size={18} className="shrink-0" />
-              <span>Favoritos</span>
+              <span>{t("sidebar.favorites")}</span>
             </button>
-
             <button
               onClick={() => {
                 setCurrentView("compras");
@@ -118,9 +118,8 @@ export default function Sidebar({
               className={buttonClasses(currentView === "compras")}
             >
               <Briefcase size={18} className="shrink-0" />
-              <span>Mi Flota</span>
+              <span>{t("sidebar.fleet")}</span>
             </button>
-
             <button
               onClick={() => {
                 setCurrentView("tracking");
@@ -129,7 +128,7 @@ export default function Sidebar({
               className={buttonClasses(currentView === "tracking")}
             >
               <Ship size={18} className="shrink-0" />
-              <span>Tracking</span>
+              <span>{t("sidebar.tracking")}</span>
             </button>
           </nav>
         </div>
@@ -137,16 +136,19 @@ export default function Sidebar({
         <div
           className={`space-y-4 border-t pt-4 relative ${isDarkMode ? "border-[#1e293b]/60" : "border-slate-200"}`}
         >
-          {/* Botón de cambio de tema corregido */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition duration-200 cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-[0.97] ${isDarkMode ? "bg-[#1e293b]/30 border-slate-800 text-amber-400 hover:bg-[#1e293b]/60" : "bg-slate-50 border-slate-200 text-amber-600 hover:bg-slate-100"}`}
           >
             <span className="flex items-center gap-2">
               {isDarkMode ? <Moon size={14} /> : <Sun size={14} />}
-              <span>{isDarkMode ? "Modo Oscuro" : "Modo Claro"}</span>
+              <span>
+                {isDarkMode ? t("sidebar.dark_mode") : t("sidebar.light_mode")}
+              </span>
             </span>
-            <span className="text-[9px] text-slate-400 font-mono">Cambiar</span>
+            <span className="text-[9px] text-slate-400 font-mono">
+              {t("sidebar.change")}
+            </span>
           </button>
 
           {isProfileOpen && (
@@ -167,17 +169,11 @@ export default function Sidebar({
               </div>
               <button
                 onClick={() => {
-                  setAlertModal({
-                    open: true,
-                    title: "Configuración de Cuenta",
-                    message:
-                      "Área protegida en v1.1. Gestiona tus datos desde aquí en la Fase 2.",
-                  });
                   setIsProfileOpen(false);
                 }}
-                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-left cursor-pointer outline-none focus:outline-none focus:ring-0 active:bg-slate-500/10 ${isDarkMode ? "text-slate-300 hover:bg-[#1e293b] hover:text-[#f59e0b]" : "text-slate-600 hover:bg-slate-50 hover:text-amber-600"}`}
+                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-left cursor-pointer outline-none active:bg-slate-500/10 ${isDarkMode ? "text-slate-300 hover:bg-[#1e293b] hover:text-[#f59e0b]" : "text-slate-600 hover:bg-slate-50 hover:text-amber-600"}`}
               >
-                <User size={14} /> Ver mi cuenta
+                <User size={14} /> {t("sidebar.account")}
               </button>
               <button
                 onClick={(e) => {
@@ -185,17 +181,16 @@ export default function Sidebar({
                   setIsProfileOpen(false);
                   setLogoutModal(true);
                 }}
-                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide border-t mt-1 transition-colors text-left cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-95 ${isDarkMode ? "text-red-400 hover:bg-red-950/20 border-[#1e293b]" : "text-red-600 hover:bg-red-50 border-slate-100"}`}
+                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wide border-t mt-1 transition-colors text-left cursor-pointer outline-none active:scale-95 ${isDarkMode ? "text-red-400 hover:bg-red-950/20 border-[#1e293b]" : "text-red-600 hover:bg-red-50 border-slate-100"}`}
               >
-                <LogOut size={14} /> Cerrar sesión
+                <LogOut size={14} /> {t("sidebar.logout")}
               </button>
             </div>
           )}
 
-          {/* Botón de Mi Cuenta corregido */}
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`w-full flex items-center justify-between p-2 rounded-xl border transition duration-200 text-left focus:outline-none focus:ring-0 outline-none cursor-pointer active:scale-[0.97] ${isDarkMode ? "bg-[#1e293b]/30 border-slate-800/80 hover:bg-[#1e293b]/60" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
+            className={`w-full flex items-center justify-between p-2 rounded-xl border transition duration-200 text-left cursor-pointer active:scale-[0.97] outline-none ${isDarkMode ? "bg-[#1e293b]/30 border-slate-800/80 hover:bg-[#1e293b]/60" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-[#f59e0b] text-[#0f172a] font-black flex items-center justify-center text-sm shadow-md">
@@ -205,10 +200,10 @@ export default function Sidebar({
                 <p
                   className={`text-xs font-bold tracking-wide ${isDarkMode ? "text-white" : "text-slate-800"}`}
                 >
-                  Mi Cuenta
+                  {t("sidebar.account")}
                 </p>
                 <p className="text-[10px] text-slate-400 font-medium">
-                  Opciones
+                  {t("sidebar.options")}
                 </p>
               </div>
             </div>
