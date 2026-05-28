@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User, KeyRound, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import "@/i18n/config"; // Importa tu configuración de idiomas
+import "@/i18n/config";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,10 +13,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    // Si el usuario ya eligió un idioma antes, lo cargamos aquí
+    // 🌟 Forzamos la página para que se lea en inglés al entrar, a menos que el usuario ya haya elegido otro manualmente.
     const savedLanguage = localStorage.getItem("jifex_language");
     if (savedLanguage) {
       i18n.changeLanguage(savedLanguage);
+    } else {
+      i18n.changeLanguage("en");
     }
   }, [i18n]);
 
@@ -28,7 +30,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans p-4">
       <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-8 border border-slate-100">
-        {/* LOGO Y SUBTÍTULO */}
         <div className="text-center mb-10">
           <h1 className="text-5xl font-black tracking-tight text-slate-900 mb-1">
             JIF<span className="text-[#f59e0b]">EX</span>
@@ -38,7 +39,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* ACCESO EVALUADOR (Información de credenciales) */}
         <div className="mb-8 p-4 rounded-2xl border border-amber-500/20 bg-amber-50/50">
           <p className="text-xs font-bold text-amber-500 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
             <ShieldCheck size={14} /> {t("login.evaluator_access")}
@@ -49,7 +49,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* FORMULARIO */}
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pl-1">

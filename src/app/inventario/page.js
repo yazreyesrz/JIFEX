@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { mockVehicles } from "@/data/mockVehicles";
 
-// 🌟 IMPORTAMOS LA CONFIGURACIÓN DE I18N
 import "@/i18n/config";
 import { useTranslation } from "react-i18next";
 
@@ -22,7 +21,7 @@ import FavoritosView from "@/components/views/FavoritosView";
 import ComprasView from "@/components/views/ComprasView";
 import TrackingView from "@/components/views/TrackingView";
 
-// Componente Dropdown Exclusivo para la Moneda
+// Dropdown de Moneda (Adaptable a móviles)
 const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const options = [
@@ -34,23 +33,24 @@ const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
     options.find((o) => o.value === currency)?.label || "USD ($)";
 
   return (
-    // 🌟 CORRECCIÓN: Bajamos el z-index a 30 para que no pase por encima del Sidebar móvil
-    <div className="relative z-30">
+    <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-amber-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-amber-500/50 text-white" : "bg-white border-slate-200 hover:border-amber-400 text-slate-800"}`}
+        className={`flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-amber-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-amber-500/50 text-white" : "bg-white border-slate-200 hover:border-amber-400 text-slate-800"}`}
       >
-        <Coins size={14} className="text-amber-500" />
-        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider">
+        <Coins size={14} className="text-amber-500 shrink-0" />
+        <span className="text-[11px] font-bold tracking-wider hidden sm:block">
           {selectedLabel}
+        </span>
+        <span className="text-[10px] font-bold tracking-wider sm:hidden block">
+          {currency}
         </span>
         <ChevronDown
           size={14}
           className={`transition-transform ${isOpen ? "rotate-180 text-amber-500" : "text-slate-400"}`}
         />
       </button>
-
       {isOpen && (
         <div
           className={`absolute right-0 top-full mt-2 w-32 rounded-2xl border shadow-2xl overflow-hidden py-1 ${isDarkMode ? "bg-[#111827] border-slate-800" : "bg-white border-slate-100"}`}
@@ -74,20 +74,19 @@ const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
   );
 };
 
-// Componente Dropdown Exclusivo para el Idioma
+// Dropdown de Idioma (Adaptable a móviles)
 const LanguageDropdown = ({ isDarkMode }) => {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-
   const options = [
     { label: "Español (ES)", value: "es" },
     { label: "English (EN)", value: "en" },
     { label: "日本語 (JA)", value: "ja" },
     { label: "한국어 (KO)", value: "ko" },
   ];
-
   const selectedLabel =
-    options.find((o) => o.value === i18n.language)?.label || "Español (ES)";
+    options.find((o) => o.value === i18n.language)?.label || "English (EN)";
+  const shortLangLabel = i18n.language ? i18n.language.toUpperCase() : "EN";
 
   const handleLanguageChange = (lng) => {
     i18n.changeLanguage(lng);
@@ -96,23 +95,24 @@ const LanguageDropdown = ({ isDarkMode }) => {
   };
 
   return (
-    // 🌟 CORRECCIÓN: Bajamos el z-index a 30
-    <div className="relative z-30">
+    <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-blue-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-blue-500/50 text-white" : "bg-white border-slate-200 hover:border-blue-400 text-slate-800"}`}
+        className={`flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border shadow-sm transition-all duration-300 outline-none focus:ring-2 focus:ring-blue-500/40 active:scale-95 cursor-pointer ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700/80 hover:border-blue-500/50 text-white" : "bg-white border-slate-200 hover:border-blue-400 text-slate-800"}`}
       >
-        <Globe size={14} className="text-blue-500" />
-        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider">
+        <Globe size={14} className="text-blue-500 shrink-0" />
+        <span className="text-[11px] font-bold tracking-wider hidden sm:block">
           {selectedLabel}
+        </span>
+        <span className="text-[10px] font-bold tracking-wider sm:hidden block">
+          {shortLangLabel}
         </span>
         <ChevronDown
           size={14}
           className={`transition-transform ${isOpen ? "rotate-180 text-blue-500" : "text-slate-400"}`}
         />
       </button>
-
       {isOpen && (
         <div
           className={`absolute right-0 top-full mt-2 w-36 rounded-2xl border shadow-2xl overflow-hidden py-1 ${isDarkMode ? "bg-[#111827] border-slate-800" : "bg-white border-slate-100"}`}
@@ -160,6 +160,8 @@ export default function InventarioPage() {
     const savedLanguage = localStorage.getItem("jifex_language");
     if (savedLanguage) {
       i18n.changeLanguage(savedLanguage);
+    } else {
+      i18n.changeLanguage("en");
     }
 
     const targetView = localStorage.getItem("jifex_target_view");
@@ -170,19 +172,16 @@ export default function InventarioPage() {
   }, [i18n]);
 
   const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem("jifex_theme", newTheme ? "dark" : "light");
+    setIsDarkMode(!isDarkMode);
+    localStorage.setItem("jifex_theme", !isDarkMode ? "dark" : "light");
   };
-
   const toggleFavorite = (vin) => {
-    const newFavorites = favorites.includes(vin)
+    const newFavs = favorites.includes(vin)
       ? favorites.filter((id) => id !== vin)
       : [...favorites, vin];
-    setFavorites(newFavorites);
-    localStorage.setItem("jifex_favorites", JSON.stringify(newFavorites));
+    setFavorites(newFavs);
+    localStorage.setItem("jifex_favorites", JSON.stringify(newFavs));
   };
-
   const convertPrice = (priceUSDStr) => {
     const numericPrice = parseInt(priceUSDStr.replace(/[^0-9]/g, ""));
     if (currency === "PKR") return `₨ ${(numericPrice * 285).toLocaleString()}`;
@@ -190,8 +189,19 @@ export default function InventarioPage() {
     return priceUSDStr;
   };
 
+  // Guardamos los botones de idiomas para pasárselos al menú móvil
+  const topControls = (
+    <div className="flex items-center gap-1.5 sm:gap-3">
+      <LanguageDropdown isDarkMode={isDarkMode} />
+      <CurrencyDropdown
+        currency={currency}
+        setCurrency={setCurrency}
+        isDarkMode={isDarkMode}
+      />
+    </div>
+  );
+
   return (
-    // 🌟 CORRECCIÓN: Añadido flex-col md:flex-row para que en móvil respete el formato de columna
     <div
       className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${isDarkMode ? "bg-[#0b121f] text-[#f1f5f9]" : "bg-slate-50 text-[#0f172a]"}`}
     >
@@ -205,21 +215,18 @@ export default function InventarioPage() {
         setLogoutModal={setLogoutModal}
         isDarkMode={isDarkMode}
         setIsDarkMode={toggleTheme}
+        topRightControls={topControls}
       />
 
-      <div className="md:ml-64 flex-1 w-full">
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-          {/* HEADER GLOBAL CON SELECTORES */}
-          {/* 🌟 CORRECCIÓN: flex-row para que se mantengan uno al lado del otro incluso en móvil */}
-          <div className="flex flex-row items-center justify-end mb-6 gap-2 sm:gap-3 relative z-30">
-            <LanguageDropdown isDarkMode={isDarkMode} />
-            <CurrencyDropdown
-              currency={currency}
-              setCurrency={setCurrency}
-              isDarkMode={isDarkMode}
-            />
-          </div>
+      <div className="md:ml-64 flex-1 w-full flex flex-col">
+        {/* 🌟 LA BARRITA BLANCA SUPERIOR EN ESCRITORIO */}
+        <header
+          className={`hidden md:flex sticky top-0 z-40 items-center justify-end px-8 py-3.5 border-b backdrop-blur-md transition-colors ${isDarkMode ? "bg-[#0b121f]/80 border-slate-800" : "bg-white/80 border-slate-200"}`}
+        >
+          {topControls}
+        </header>
 
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6 w-full">
           {currentView === "inventario" && (
             <CatalogoView
               isDarkMode={isDarkMode}
