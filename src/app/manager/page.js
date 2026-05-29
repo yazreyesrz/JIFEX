@@ -32,12 +32,10 @@ export default function ManagerDashboard() {
   const { logout } = useAuth();
   const [currentView, setCurrentView] = useState("tickets");
 
-  // 🌟 Inicializa en falso (Modo Claro)
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // 🌟 Lógica estricta para forzar el modo claro por defecto
     const savedTheme = localStorage.getItem("jifex_theme");
     if (savedTheme === "dark") {
       setIsDarkMode(true);
@@ -98,8 +96,9 @@ export default function ManagerDashboard() {
         />
       )}
 
+      {/* 🌟 AQUÍ ESTÁ LA CORRECCIÓN: md:sticky md:top-0 h-screen overflow-y-auto */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out border-r shrink-0 flex flex-col justify-between p-5 md:h-screen shadow-2xl md:shadow-none ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:sticky md:top-0 md:translate-x-0 transition-transform duration-300 ease-in-out border-r shrink-0 flex flex-col justify-between p-5 h-screen overflow-y-auto shadow-2xl md:shadow-none ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
       >
         <div className="space-y-8">
           <div
@@ -161,7 +160,7 @@ export default function ManagerDashboard() {
         </div>
 
         <div
-          className={`space-y-4 border-t pt-4 mt-8 md:mt-0 ${isDarkMode ? "border-[#1e293b]/60" : "border-slate-200"}`}
+          className={`space-y-4 border-t pt-4 mt-8 md:mt-0 shrink-0 ${isDarkMode ? "border-[#1e293b]/60" : "border-slate-200"}`}
         >
           <button
             onClick={toggleTheme}
