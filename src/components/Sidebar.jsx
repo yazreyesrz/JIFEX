@@ -15,6 +15,7 @@ import {
   Moon,
   Heart,
   LayoutGrid,
+  LifeBuoy,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -24,7 +25,7 @@ export default function Sidebar({
   setLogoutModal,
   isDarkMode,
   setIsDarkMode,
-  topRightControls, // 🌟 NUEVO PARÁMETRO
+  topRightControls,
 }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -41,7 +42,7 @@ export default function Sidebar({
 
   return (
     <>
-      {/* 🌟 LA FAMOSA BARRITA BLANCA EN MÓVILES */}
+      {/* 🌟 LA BARRITA BLANCA SUPERIOR EN MÓVILES */}
       <div
         className={`md:hidden flex items-center justify-between border-b px-4 py-3 sticky top-0 z-50 transition-colors ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
       >
@@ -56,7 +57,6 @@ export default function Sidebar({
           </span>
         </button>
 
-        {/* Aquí se inyectan los selectores de idioma junto al menú hamburguesa */}
         <div className="flex items-center gap-2">
           {topRightControls}
           <button
@@ -133,6 +133,16 @@ export default function Sidebar({
             >
               <Ship size={18} className="shrink-0" />
               <span>{t("sidebar.tracking")}</span>
+            </button>
+            <button
+              onClick={() => {
+                setCurrentView("soporte");
+                setIsMobileOpen(false);
+              }}
+              className={buttonClasses(currentView === "soporte")}
+            >
+              <LifeBuoy size={18} className="shrink-0" />
+              <span>{t("sidebar.support")}</span>
             </button>
           </nav>
         </div>

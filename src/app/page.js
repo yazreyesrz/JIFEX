@@ -2,18 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, KeyRound, ShieldCheck } from "lucide-react";
+import { User, KeyRound, ShieldCheck, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "@/i18n/config";
+import { useAuth } from "@/context/AuthContext"; // 🌟 Conectamos con tu sistema de autenticación
 
 export default function LoginPage() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const { login } = useAuth(); // Extraemos la función login del contexto
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(""); // Estado para manejar errores
 
   useEffect(() => {
-    // 🌟 Forzamos la página para que se lea en inglés al entrar, a menos que el usuario ya haya elegido otro manualmente.
+    // Forzamos la página para que se lea en inglés al entrar, a menos que el usuario ya haya elegido otro manualmente.
     const savedLanguage = localStorage.getItem("jifex_language");
     if (savedLanguage) {
       i18n.changeLanguage(savedLanguage);
@@ -24,7 +28,15 @@ export default function LoginPage() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    router.push("/inventario");
+    setError(""); // Limpiamos errores previos
+
+    // Llamamos a la función de tu contexto
+    const result = login(username, password);
+
+    // Si falla, mostramos el error en pantalla
+    if (!result.success) {
+      setError(result.error);
+    }
   };
 
   return (
@@ -44,8 +56,9 @@ export default function LoginPage() {
             <ShieldCheck size={14} /> {t("login.evaluator_access")}
           </p>
           <div className="space-y-1 font-mono text-[10px] text-amber-600/80">
-            <p>• {t("login.username")}: CLIENTE123</p>
-            <p>• ADMIN: ADMINJIFEX</p>
+            <p>• CLIENTE123 : jifex2026</p>
+            <p>• MANAGERJIFEX: manager2026</p>
+            <p>• ADMIN: admin2026</p>
           </div>
         </div>
 
@@ -64,6 +77,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full rounded-xl bg-slate-100/80 border-none py-3.5 pl-11 pr-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
                 placeholder="CLIENTE123"
+                required
               />
             </div>
           </div>
@@ -82,9 +96,18 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-xl bg-slate-100/80 border-none py-3.5 pl-11 pr-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/50 transition-all tracking-widest"
                 placeholder="••••••••"
+                required
               />
             </div>
           </div>
+
+          {/* Mensaje de error dinámico */}
+          {error && (
+            <div className="flex items-center gap-2 text-xs font-bold text-red-500 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+              <AlertCircle size={14} className="shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
 
           <button
             type="submit"

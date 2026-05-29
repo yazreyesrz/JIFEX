@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Ship,
   Compass,
@@ -7,23 +7,126 @@ import {
   Gauge,
   Hourglass,
   Calendar,
+  Navigation,
+  ArrowLeft,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { mockVehicles } from "@/data/mockVehicles";
 
 export default function TrackingView({ isDarkMode }) {
   const { t } = useTranslation();
+  // Estado para saber qué vehículo estamos rastreando. Si es null, mostramos la lista.
+  const [selectedVin, setSelectedVin] = useState(null);
 
+  // Filtramos las importaciones activas (igual que en Mi Flota)
+  const activeVehicles = [mockVehicles[0], mockVehicles[4]];
+  const selectedVehicle = activeVehicles.find((v) => v.vin === selectedVin);
+
+  // ================= VISTA 1: LISTA DE SELECCIÓN (ESTILO MY FLEET) =================
+  if (!selectedVehicle) {
+    return (
+      <div className="space-y-6">
+        <div
+          className={`border-b pb-3 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+        >
+          <h2
+            className={`text-2xl font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+          >
+            <Navigation className="text-blue-500" size={22} />{" "}
+            {t("tracking.select_title")}
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            {t("tracking.select_subtitle")}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {activeVehicles.map((car) => (
+            <div
+              key={car.vin}
+              onClick={() => setSelectedVin(car.vin)}
+              className={`group rounded-3xl border p-6 flex flex-col sm:flex-row items-center gap-6 cursor-pointer shadow-xl transition-all duration-300 hover:shadow-2xl outline-none active:scale-[0.98] ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/80 hover:border-blue-500/50 hover:bg-[#1e293b]/70" : "bg-white border-slate-200 hover:border-blue-400 hover:bg-blue-50/30"}`}
+            >
+              <div className="w-full sm:w-48 h-32 shrink-0">
+                <img
+                  src={car.fotos[0]}
+                  alt={car.modelo}
+                  className={`w-full h-full object-cover rounded-2xl border ${isDarkMode ? "border-slate-700" : "border-slate-200"}`}
+                />
+              </div>
+              <div className="flex-1 space-y-3 w-full">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3
+                      className={`text-xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                    >
+                      {car.modelo}
+                    </h3>
+                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                      VIN: {car.vin}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-2.5 py-1 text-[9px] font-black rounded-lg uppercase tracking-wider border ${car.estadoActual === "En tránsito" ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}
+                  >
+                    {t(`states.${car.estadoActual}`, {
+                      defaultValue: car.estadoActual,
+                    })}
+                  </span>
+                </div>
+
+                <div
+                  className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? "border-slate-800/60" : "border-slate-100"}`}
+                >
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider font-bold opacity-70 text-slate-400">
+                      {t("fleet.est_arrival")}
+                    </p>
+                    <p
+                      className={`font-black text-sm mt-0.5 flex items-center gap-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}
+                    >
+                      <Calendar size={12} className="text-amber-500" />{" "}
+                      {t("fleet.in_days")} {car.diasParaEntrega}{" "}
+                      {t("fleet.days")}
+                    </p>
+                  </div>
+                  <button
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold transition cursor-pointer outline-none ${isDarkMode ? "bg-amber-500/10 border-amber-500/20 text-amber-500 group-hover:bg-amber-500 group-hover:text-black" : "bg-amber-50 border-amber-200 text-amber-600 group-hover:bg-amber-500 group-hover:text-white"}`}
+                  >
+                    {t("fleet.track")} <Navigation size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ================= VISTA 2: DETALLE DEL TRACKING =================
   return (
     <div className="space-y-6">
+      {/* HEADER CON BOTÓN DE REGRESO */}
       <div
-        className={`border-b pb-3 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+        className={`border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
       >
-        <h2
-          className={`text-2xl font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+        <div>
+          <h2
+            className={`text-2xl font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+          >
+            <Ship className="text-amber-500" size={22} /> {t("tracking.title")}
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            {t("tracking.subtitle")}
+          </p>
+        </div>
+        <button
+          onClick={() => setSelectedVin(null)}
+          className={`inline-flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors border outline-none active:scale-95 ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700 text-slate-300 hover:bg-[#1e293b] hover:text-white hover:border-slate-500" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"}`}
         >
-          <Ship className="text-amber-500" size={22} /> {t("tracking.title")}
-        </h2>
-        <p className="text-xs text-slate-400 mt-1">{t("tracking.subtitle")}</p>
+          <ArrowLeft size={14} /> {t("tracking.back_btn")}
+        </button>
       </div>
 
       <div
@@ -31,7 +134,7 @@ export default function TrackingView({ isDarkMode }) {
       >
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
           <Compass size={14} className="text-amber-500" />{" "}
-          {t("tracking.coordinates")}: Buque JFX-Carrier I
+          {t("tracking.coordinates")}: {selectedVehicle.modelo}
         </h3>
         <div
           className={`relative h-28 w-full rounded-xl border overflow-hidden flex items-center justify-between px-10 sm:px-16 transition-colors ${isDarkMode ? "bg-[#0b121f]/80 border-slate-800" : "bg-slate-50 border-slate-200"}`}

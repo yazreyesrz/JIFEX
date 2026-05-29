@@ -20,6 +20,17 @@ export function AuthProvider({ children }) {
       localStorage.setItem("jifex_session", JSON.stringify(adminUser));
       router.push("/admin");
       return { success: true };
+    } else if (username === "MANAGERJIFEX" && password === "manager2026") {
+      // 🌟 AQUÍ ESTÁ EL NUEVO USUARIO MANAGER
+      const managerUser = {
+        id: username,
+        role: "manager",
+        name: "Manager de Operaciones",
+      };
+      setUser(managerUser);
+      localStorage.setItem("jifex_session", JSON.stringify(managerUser));
+      router.push("/manager");
+      return { success: true };
     } else if (username === "CLIENTE123" && password === "jifex2026") {
       const clientUser = {
         id: username,
@@ -31,6 +42,7 @@ export function AuthProvider({ children }) {
       router.push("/inventario");
       return { success: true };
     }
+
     return { success: false, error: "ID de usuario o contraseña incorrectos." };
   };
 

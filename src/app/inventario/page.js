@@ -20,8 +20,9 @@ import CatalogoView from "@/components/views/CatalogoView";
 import FavoritosView from "@/components/views/FavoritosView";
 import ComprasView from "@/components/views/ComprasView";
 import TrackingView from "@/components/views/TrackingView";
+import SoporteView from "@/components/views/SoporteView";
 
-// Dropdown de Moneda (Adaptable a móviles)
+// Dropdown de Moneda
 const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const options = [
@@ -33,7 +34,7 @@ const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
     options.find((o) => o.value === currency)?.label || "USD ($)";
 
   return (
-    <div className="relative">
+    <div className="relative z-30">
       <button
         onClick={() => setIsOpen(!isOpen)}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
@@ -74,7 +75,7 @@ const CurrencyDropdown = ({ currency, setCurrency, isDarkMode }) => {
   );
 };
 
-// Dropdown de Idioma (Adaptable a móviles)
+// Dropdown de Idioma
 const LanguageDropdown = ({ isDarkMode }) => {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -95,7 +96,7 @@ const LanguageDropdown = ({ isDarkMode }) => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-30">
       <button
         onClick={() => setIsOpen(!isOpen)}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
@@ -182,14 +183,26 @@ export default function InventarioPage() {
     setFavorites(newFavs);
     localStorage.setItem("jifex_favorites", JSON.stringify(newFavs));
   };
+
+  // 🌟 AHORA ESTA FUNCIÓN LEE LA CONFIGURACIÓN DEL MANAGER EN TIEMPO REAL
   const convertPrice = (priceUSDStr) => {
     const numericPrice = parseInt(priceUSDStr.replace(/[^0-9]/g, ""));
-    if (currency === "PKR") return `₨ ${(numericPrice * 285).toLocaleString()}`;
-    if (currency === "JPY") return `¥ ${(numericPrice * 162).toLocaleString()}`;
+
+    if (currency === "PKR") {
+      const livePKR = parseFloat(
+        localStorage.getItem("jifex_rate_pkr") || "285",
+      );
+      return `₨ ${(numericPrice * livePKR).toLocaleString()}`;
+    }
+    if (currency === "JPY") {
+      const liveJPY = parseFloat(
+        localStorage.getItem("jifex_rate_jpy") || "162",
+      );
+      return `¥ ${(numericPrice * liveJPY).toLocaleString()}`;
+    }
     return priceUSDStr;
   };
 
-  // Guardamos los botones de idiomas para pasárselos al menú móvil
   const topControls = (
     <div className="flex items-center gap-1.5 sm:gap-3">
       <LanguageDropdown isDarkMode={isDarkMode} />
@@ -219,7 +232,6 @@ export default function InventarioPage() {
       />
 
       <div className="md:ml-64 flex-1 w-full flex flex-col">
-        {/* 🌟 LA BARRITA BLANCA SUPERIOR EN ESCRITORIO */}
         <header
           className={`hidden md:flex sticky top-0 z-40 items-center justify-end px-8 py-3.5 border-b backdrop-blur-md transition-colors ${isDarkMode ? "bg-[#0b121f]/80 border-slate-800" : "bg-white/80 border-slate-200"}`}
         >
@@ -258,6 +270,7 @@ export default function InventarioPage() {
           {currentView === "tracking" && (
             <TrackingView isDarkMode={isDarkMode} />
           )}
+          {currentView === "soporte" && <SoporteView isDarkMode={isDarkMode} />}
         </main>
       </div>
 
