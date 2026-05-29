@@ -14,8 +14,8 @@ import {
   Ship,
   Users,
   Sliders,
-  Menu, // 🌟 Ícono de hamburguesa
-  X, // 🌟 Ícono para cerrar
+  Menu,
+  X,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -31,14 +31,20 @@ export default function ManagerDashboard() {
   const { t, i18n } = useTranslation();
   const { logout } = useAuth();
   const [currentView, setCurrentView] = useState("tickets");
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // 🌟 NUEVO: Estado para controlar el menú en móviles
+  // 🌟 Inicializa en falso (Modo Claro)
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    // 🌟 Lógica estricta para forzar el modo claro por defecto
     const savedTheme = localStorage.getItem("jifex_theme");
-    if (savedTheme === "dark") setIsDarkMode(true);
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+    } else {
+      setIsDarkMode(false);
+      localStorage.setItem("jifex_theme", "light");
+    }
 
     const savedLanguage = localStorage.getItem("jifex_language");
     if (savedLanguage && i18n && typeof i18n.changeLanguage === "function") {
@@ -57,14 +63,13 @@ export default function ManagerDashboard() {
 
   const changeView = (view) => {
     setCurrentView(view);
-    setIsMobileMenuOpen(false); // Cierra el menú al elegir una opción en móvil
+    setIsMobileMenuOpen(false);
   };
 
   return (
     <div
       className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${isDarkMode ? "bg-[#0b121f] text-[#f1f5f9]" : "bg-slate-50 text-[#0f172a]"}`}
     >
-      {/* 🌟 HEADER MÓVIL (Solo visible en pantallas pequeñas) */}
       <div
         className={`md:hidden flex items-center justify-between p-4 border-b sticky top-0 z-30 ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
       >
@@ -86,7 +91,6 @@ export default function ManagerDashboard() {
         </button>
       </div>
 
-      {/* 🌟 FONDO OSCURO PARA MÓVILES (Al abrir el menú) */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
@@ -94,7 +98,6 @@ export default function ManagerDashboard() {
         />
       )}
 
-      {/* SIDEBAR (Ahora es fixed en móvil y relative en escritorio) */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out border-r shrink-0 flex flex-col justify-between p-5 md:h-screen shadow-2xl md:shadow-none ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
       >
@@ -113,10 +116,8 @@ export default function ManagerDashboard() {
               </span>
             </div>
 
-            {/* Logo en móvil para el sidebar interno */}
             <div className="md:hidden font-black text-lg">Menú Principal</div>
 
-            {/* Botón de cerrar en móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(false)}
               className={`md:hidden p-1.5 rounded-lg border outline-none active:scale-95 ${isDarkMode ? "border-slate-700 text-slate-400" : "border-slate-200 text-slate-600"}`}

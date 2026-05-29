@@ -58,7 +58,7 @@ export default function LoginPage() {
           <div className="space-y-1 font-mono text-[10px] text-amber-600/80">
             <p>• CLIENTE123 : jifex2026</p>
             <p>• MANAGERJIFEX: manager2026</p>
-            <p>• ADMIN: admin2026</p>
+            <p>• ADMINJIFEX : admin2026</p>
           </div>
         </div>
 

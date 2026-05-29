@@ -25,9 +25,9 @@ export default function AdminDashboard() {
   const { t, i18n } = useTranslation();
   const { logout, user } = useAuth();
   const [currentView, setCurrentView] = useState("dashboard");
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // 🌟 NUEVO: Estado para móvil
+  // 🌟 Inicializa en falso (Modo Claro)
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -35,8 +35,14 @@ export default function AdminDashboard() {
       router.push("/");
     }
 
+    // 🌟 Lógica estricta para forzar el modo claro por defecto
     const savedTheme = localStorage.getItem("jifex_theme");
-    if (savedTheme === "dark") setIsDarkMode(true);
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+    } else {
+      setIsDarkMode(false);
+      localStorage.setItem("jifex_theme", "light");
+    }
 
     const savedLanguage = localStorage.getItem("jifex_language");
     if (savedLanguage && i18n && typeof i18n.changeLanguage === "function") {
@@ -64,7 +70,6 @@ export default function AdminDashboard() {
     <div
       className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${isDarkMode ? "bg-[#0b121f] text-[#f1f5f9]" : "bg-slate-50 text-[#0f172a]"}`}
     >
-      {/* 🌟 HEADER MÓVIL */}
       <div
         className={`md:hidden flex items-center justify-between p-4 border-b sticky top-0 z-30 ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
       >
@@ -84,7 +89,6 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* 🌟 FONDO OSCURO PARA MÓVILES */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
@@ -92,7 +96,6 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* SIDEBAR RESPONSIVE */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out border-r shrink-0 flex flex-col justify-between p-5 md:h-screen shadow-2xl md:shadow-none ${isDarkMode ? "bg-[#0f172a] border-[#1e293b]" : "bg-white border-slate-200"}`}
       >
