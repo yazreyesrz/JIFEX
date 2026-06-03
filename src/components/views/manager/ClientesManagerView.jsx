@@ -14,11 +14,12 @@ import {
   Save,
   CheckCircle2,
   KeyRound,
-  User, // 🌟 Importamos nuevos íconos para las credenciales
+  User,
+  ShieldAlert,
 } from "lucide-react";
 import { mockVehicles } from "@/data/mockVehicles";
 
-// Base de datos simulada de clientes (ahora incluye username y password)
+// Base de datos simulada de clientes
 const mockClientes = [
   {
     id: "CL-001",
@@ -48,6 +49,9 @@ export default function ClientesManagerView({ isDarkMode }) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentClient, setCurrentClient] = useState(null);
+
+  // 🌟 ESTADO PARA EL MODAL DE ELIMINACIÓN DE CLIENTE
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
 
   const filteredClientes = clientes.filter(
     (cliente) =>
@@ -79,7 +83,6 @@ export default function ClientesManagerView({ isDarkMode }) {
     setCurrentClient({ ...currentClient, [e.target.name]: e.target.value });
   };
 
-  // Función para marcar/desmarcar un auto asignado a este cliente
   const handleAssignCar = (vin) => {
     setCurrentClient((prev) => {
       const isAssigned = prev.autosAsignados.includes(vin);
@@ -104,7 +107,6 @@ export default function ClientesManagerView({ isDarkMode }) {
       return;
     }
 
-    // Si ya existe lo actualizamos, si no lo agregamos
     const exists = clientes.find((c) => c.id === currentClient.id);
     if (exists) {
       setClientes(
@@ -118,10 +120,15 @@ export default function ClientesManagerView({ isDarkMode }) {
     setCurrentClient(null);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm(`¿Estás seguro de eliminar al cliente ${id}?`)) {
-      setClientes(clientes.filter((c) => c.id !== id));
-    }
+  // 🌟 FUNCIÓN PARA ABRIR EL MODAL (Reemplaza a window.confirm)
+  const handleDeleteClick = (id) => {
+    setDeleteModal({ isOpen: true, id });
+  };
+
+  // 🌟 FUNCIÓN PARA CONFIRMAR LA ELIMINACIÓN
+  const confirmDelete = () => {
+    setClientes(clientes.filter((c) => c.id !== deleteModal.id));
+    setDeleteModal({ isOpen: false, id: null });
   };
 
   // ================= VISTA 1: FORMULARIO DE CLIENTE =================
@@ -157,9 +164,7 @@ export default function ClientesManagerView({ isDarkMode }) {
           onSubmit={handleSave}
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
         >
-          {/* COLUMNA 1: DATOS Y CREDENCIALES DEL CLIENTE */}
           <div className="space-y-6">
-            {/* CREDENCIALES DE ACCESO (NUEVO) */}
             <div
               className={`rounded-3xl border p-6 md:p-8 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
             >
@@ -218,7 +223,6 @@ export default function ClientesManagerView({ isDarkMode }) {
               </p>
             </div>
 
-            {/* INFORMACIÓN DE CONTACTO */}
             <div
               className={`rounded-3xl border p-6 md:p-8 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
             >
@@ -318,7 +322,6 @@ export default function ClientesManagerView({ isDarkMode }) {
             </div>
           </div>
 
-          {/* COLUMNA 2: ASIGNACIÓN DE VEHÍCULOS */}
           <div
             className={`rounded-3xl border p-6 md:p-8 flex flex-col h-full ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
           >
@@ -392,147 +395,195 @@ export default function ClientesManagerView({ isDarkMode }) {
 
   // ================= VISTA 2: LISTA DE CLIENTES =================
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <div
-        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
-      >
-        <div>
-          <h1
-            className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
-          >
-            Gestión de Clientes
-          </h1>
-          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">
-            Administra perfiles y asignación de compras
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              size={14}
-            />
-            <input
-              type="text"
-              placeholder="Buscar cliente o usuario..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full sm:w-64 rounded-xl border py-2 pl-9 pr-4 text-xs outline-none focus:ring-2 focus:ring-blue-500/40 transition-all ${isDarkMode ? "bg-[#1e293b]/50 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-200 text-slate-900 placeholder-slate-400"}`}
-            />
+    <>
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+        >
+          <div>
+            <h1
+              className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+            >
+              Gestión de Clientes
+            </h1>
+            <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">
+              Administra perfiles y asignación de compras
+            </p>
           </div>
-          <button
-            onClick={handleCreateNew}
-            className="shrink-0 flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all shadow-md active:scale-95 outline-none"
-          >
-            <Plus size={16} />{" "}
-            <span className="hidden sm:inline">Nuevo Cliente</span>
-          </button>
-        </div>
-      </div>
 
-      <div
-        className={`rounded-3xl border overflow-hidden shadow-xl ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead
-              className={`text-xs uppercase tracking-wider font-bold ${isDarkMode ? "bg-[#0b121f]/50 text-slate-400 border-slate-800" : "bg-slate-50 text-slate-500 border-slate-200"} border-b`}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
+              <input
+                type="text"
+                placeholder="Buscar cliente o usuario..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full sm:w-64 rounded-xl border py-2 pl-9 pr-4 text-xs outline-none focus:ring-2 focus:ring-blue-500/40 transition-all ${isDarkMode ? "bg-[#1e293b]/50 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-200 text-slate-900 placeholder-slate-400"}`}
+              />
+            </div>
+            <button
+              onClick={handleCreateNew}
+              className="shrink-0 flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all shadow-md active:scale-95 outline-none"
             >
-              <tr>
-                <th className="px-6 py-4">Cliente / Compañía</th>
-                <th className="px-6 py-4">Contacto & Acceso</th>
-                <th className="px-6 py-4">Autos Comprados</th>
-                <th className="px-6 py-4 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody
-              className={`divide-y ${isDarkMode ? "divide-slate-800/60" : "divide-slate-100"}`}
-            >
-              {filteredClientes.length === 0 ? (
+              <Plus size={16} />{" "}
+              <span className="hidden sm:inline">Nuevo Cliente</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={`rounded-3xl border overflow-hidden shadow-xl ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead
+                className={`text-xs uppercase tracking-wider font-bold ${isDarkMode ? "bg-[#0b121f]/50 text-slate-400 border-slate-800" : "bg-slate-50 text-slate-500 border-slate-200"} border-b`}
+              >
                 <tr>
-                  <td
-                    colSpan="4"
-                    className="p-8 text-center text-slate-400 text-sm"
-                  >
-                    No se encontraron clientes.
-                  </td>
+                  <th className="px-6 py-4">Cliente / Compañía</th>
+                  <th className="px-6 py-4">Contacto & Acceso</th>
+                  <th className="px-6 py-4">Autos Comprados</th>
+                  <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
-              ) : (
-                filteredClientes.map((cliente) => (
-                  <tr
-                    key={cliente.id}
-                    className={`transition-colors hover:${isDarkMode ? "bg-[#1e293b]/60" : "bg-slate-50/80"}`}
-                  >
-                    <td className="px-6 py-4">
-                      <div>
-                        <p
-                          className={`font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
-                        >
-                          {cliente.nombre}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          ID: {cliente.id}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-[11px] space-y-1.5">
-                        <p
-                          className={`flex items-center gap-1.5 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}
-                        >
-                          <Mail size={12} className="text-slate-400" />{" "}
-                          {cliente.email}
-                        </p>
-                        <p
-                          className={`flex items-center gap-1.5 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}
-                        >
-                          <User size={12} className="text-slate-400" /> Usuario:{" "}
-                          <span className="font-bold text-amber-500">
-                            {cliente.username}
-                          </span>
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase tracking-wider ${
-                          cliente.autosAsignados.length > 0
-                            ? isDarkMode
-                              ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                              : "bg-amber-50 text-amber-600 border-amber-200"
-                            : isDarkMode
-                              ? "bg-slate-800 text-slate-500 border-slate-700"
-                              : "bg-slate-100 text-slate-400 border-slate-200"
-                        }`}
-                      >
-                        <Car size={12} /> {cliente.autosAsignados.length}{" "}
-                        Vehículos
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(cliente)}
-                          className={`p-1.5 rounded-lg border transition-colors outline-none ${isDarkMode ? "border-slate-700 text-blue-400 hover:bg-blue-500/10" : "border-slate-200 text-blue-600 hover:bg-blue-50"}`}
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(cliente.id)}
-                          className={`p-1.5 rounded-lg border transition-colors outline-none ${isDarkMode ? "border-slate-700 text-red-400 hover:bg-red-500/10" : "border-slate-200 text-red-600 hover:bg-red-50"}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+              </thead>
+              <tbody
+                className={`divide-y ${isDarkMode ? "divide-slate-800/60" : "divide-slate-100"}`}
+              >
+                {filteredClientes.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="4"
+                      className="p-8 text-center text-slate-400 text-sm"
+                    >
+                      No se encontraron clientes.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredClientes.map((cliente) => (
+                    <tr
+                      key={cliente.id}
+                      className={`transition-colors hover:${isDarkMode ? "bg-[#1e293b]/60" : "bg-slate-50/80"}`}
+                    >
+                      <td className="px-6 py-4">
+                        <div>
+                          <p
+                            className={`font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                          >
+                            {cliente.nombre}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            ID: {cliente.id}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-[11px] space-y-1.5">
+                          <p
+                            className={`flex items-center gap-1.5 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}
+                          >
+                            <Mail size={12} className="text-slate-400" />{" "}
+                            {cliente.email}
+                          </p>
+                          <p
+                            className={`flex items-center gap-1.5 ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}
+                          >
+                            <User size={12} className="text-slate-400" />{" "}
+                            Usuario:{" "}
+                            <span className="font-bold text-amber-500">
+                              {cliente.username}
+                            </span>
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase tracking-wider ${
+                            cliente.autosAsignados.length > 0
+                              ? isDarkMode
+                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                : "bg-amber-50 text-amber-600 border-amber-200"
+                              : isDarkMode
+                                ? "bg-slate-800 text-slate-500 border-slate-700"
+                                : "bg-slate-100 text-slate-400 border-slate-200"
+                          }`}
+                        >
+                          <Car size={12} /> {cliente.autosAsignados.length}{" "}
+                          Vehículos
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(cliente)}
+                            className={`p-1.5 rounded-lg border transition-colors outline-none ${isDarkMode ? "border-slate-700 text-blue-400 hover:bg-blue-500/10" : "border-slate-200 text-blue-600 hover:bg-blue-50"}`}
+                          >
+                            <Edit size={16} />
+                          </button>
+                          {/* 🌟 AQUÍ LLAMAMOS A NUESTRA NUEVA FUNCIÓN DEL MODAL */}
+                          <button
+                            onClick={() => handleDeleteClick(cliente.id)}
+                            className={`p-1.5 rounded-lg border transition-colors outline-none ${isDarkMode ? "border-slate-700 text-red-400 hover:bg-red-500/10" : "border-slate-200 text-red-600 hover:bg-red-50"}`}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* 🌟 MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE CLIENTE */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-300">
+          <div
+            className={`w-full max-w-sm rounded-3xl border p-7 shadow-2xl text-center space-y-5 transform transition-all duration-300 scale-100 ${isDarkMode ? "border-slate-800 bg-[#111827]" : "border-slate-100 bg-white"}`}
+          >
+            <div className="mx-auto w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+              <ShieldAlert size={26} />
+            </div>
+            <div className="space-y-1.5">
+              <h3
+                className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+              >
+                Eliminar Cliente
+              </h3>
+              <p
+                className={`text-xs leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}
+              >
+                ¿Estás seguro de que deseas eliminar permanentemente el registro
+                del cliente{" "}
+                <span className="font-bold text-amber-500">
+                  {deleteModal.id}
+                </span>
+                ? Se desvincularán todos los vehículos de su cuenta.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, id: null })}
+                className={`flex-1 rounded-xl border font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer outline-none active:scale-95 ${isDarkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300" : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

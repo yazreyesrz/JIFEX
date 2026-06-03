@@ -16,6 +16,7 @@ import {
   Upload,
   ArrowRight,
   ArrowLeft,
+  ShieldAlert,
 } from "lucide-react";
 import { mockVehicles } from "@/data/mockVehicles";
 
@@ -575,9 +576,8 @@ const CatalogoGrid = ({
   setSearchTerm,
   handleCreateNew,
   handleEdit,
-  handleDelete,
+  handleDeleteClick,
 }) => {
-  // 🌟 NUEVO ESTADO: Controla si vemos las marcas o los autos de una marca
   const [selectedBrand, setSelectedBrand] = useState(null);
 
   const filteredVehicles = vehicles.filter(
@@ -635,7 +635,6 @@ const CatalogoGrid = ({
         </div>
       </div>
 
-      {/* 🌟 VISTA 1: CUADRÍCULA DE MARCAS */}
       {!selectedBrand ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in zoom-in-95 duration-300">
           {Object.entries(groupedVehicles).map(([brand, cars]) => (
@@ -666,7 +665,6 @@ const CatalogoGrid = ({
           )}
         </div>
       ) : (
-        /* 🌟 VISTA 2: TABLA DE AUTOS PARA LA MARCA SELECCIONADA */
         <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
           <button
             onClick={() => setSelectedBrand(null)}
@@ -746,7 +744,7 @@ const CatalogoGrid = ({
                             <Edit size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(car.vin)}
+                            onClick={() => handleDeleteClick(car.vin)}
                             className={`p-1.5 rounded-lg border transition-colors outline-none ${isDarkMode ? "border-slate-700 text-red-400 hover:bg-red-500/10" : "border-slate-200 text-red-600 hover:bg-red-50"}`}
                           >
                             <Trash2 size={16} />
@@ -773,6 +771,8 @@ export default function CatalogoManagerView({ isDarkMode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [currentCar, setCurrentCar] = useState(null);
+
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, vin: null });
 
   const handleEdit = (car) => {
     setCurrentCar({
@@ -820,10 +820,13 @@ export default function CatalogoManagerView({ isDarkMode }) {
     setCurrentCar(null);
   };
 
-  const handleDelete = (vin) => {
-    if (window.confirm(`¿Estás seguro de eliminar el chasis ${vin}?`)) {
-      setVehicles(vehicles.filter((v) => v.vin !== vin));
-    }
+  const handleDeleteClick = (vin) => {
+    setDeleteModal({ isOpen: true, vin });
+  };
+
+  const confirmDelete = () => {
+    setVehicles(vehicles.filter((v) => v.vin !== deleteModal.vin));
+    setDeleteModal({ isOpen: false, vin: null });
   };
 
   return (
@@ -844,8 +847,50 @@ export default function CatalogoManagerView({ isDarkMode }) {
           setSearchTerm={setSearchTerm}
           handleCreateNew={handleCreateNew}
           handleEdit={handleEdit}
-          handleDelete={handleDelete}
+          handleDeleteClick={handleDeleteClick}
         />
+      )}
+
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-300">
+          <div
+            className={`w-full max-w-sm rounded-3xl border p-7 shadow-2xl text-center space-y-5 transform transition-all duration-300 scale-100 ${isDarkMode ? "border-slate-800 bg-[#111827]" : "border-slate-100 bg-white"}`}
+          >
+            <div className="mx-auto w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+              <ShieldAlert size={26} />
+            </div>
+            <div className="space-y-1.5">
+              <h3
+                className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+              >
+                Eliminar Vehículo
+              </h3>
+              <p
+                className={`text-xs leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}
+              >
+                ¿Estás seguro de que deseas eliminar permanentemente el chasis{" "}
+                <span className="font-bold text-amber-500">
+                  {deleteModal.vin}
+                </span>{" "}
+                del catálogo? Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, vin: null })}
+                className={`flex-1 rounded-xl border font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer outline-none active:scale-95 ${isDarkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300" : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
