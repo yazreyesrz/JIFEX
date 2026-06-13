@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-// 🌟 1. IMPORTAMOS SUPABASE
 import { createClient } from "@supabase/supabase-js";
 import {
   Plus,
@@ -26,15 +25,11 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-// 🌟 2. INICIALIZAMOS LA CONEXIÓN A TU NUBE
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase =
   supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-// =====================================================================
-// COMPONENTE 1: FORMULARIO DE CREACIÓN Y EDICIÓN
-// =====================================================================
 const VehiculoForm = ({
   isDarkMode,
   currentCar,
@@ -121,17 +116,45 @@ const VehiculoForm = ({
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) {
-      const newFotos = files.map((file) => URL.createObjectURL(file));
+      const nuevasFotosData = files.map((file) => ({
+        file: file,
+        preview: URL.createObjectURL(file),
+      }));
+
       setCurrentCar((prev) => ({
         ...prev,
-        fotos: [...(prev.fotos || []), ...newFotos],
+        fotosData: [...(prev.fotosData || []), ...nuevasFotosData],
+        fotos: [
+          ...(prev.fotos || []),
+          ...nuevasFotosData.map((f) => f.preview),
+        ],
       }));
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 3000);
     }
   };
 
-  // 🌟 GUARDAMOS EL ARCHIVO INTACTO (Sin Base64)
+  // 🌟 NUEVO: FUNCIÓN PARA BORRAR IMÁGENES
+  const handleRemoveImage = (e, indexToRemove) => {
+    e.preventDefault();
+    const fotoToRemove = currentCar.fotos[indexToRemove];
+
+    setCurrentCar((prev) => {
+      // 1. La quitamos de la vista
+      const nuevasFotos = prev.fotos.filter((_, idx) => idx !== indexToRemove);
+
+      // 2. Si la foto era "nueva" (fantasma), también la quitamos de la cola de subida
+      let nuevasFotosData = prev.fotosData || [];
+      if (fotoToRemove.startsWith("blob:")) {
+        nuevasFotosData = nuevasFotosData.filter(
+          (f) => f.preview !== fotoToRemove,
+        );
+      }
+
+      return { ...prev, fotos: nuevasFotos, fotosData: nuevasFotosData };
+    });
+  };
+
   const handleFileUpload = (e, docKey) => {
     const file = e.target.files[0];
     if (file) {
@@ -141,7 +164,7 @@ const VehiculoForm = ({
           ...prev.documentos,
           [docKey]: {
             name: file.name,
-            file: file, // 🌟 Se guarda el archivo crudo
+            file: file,
           },
         },
       }));
@@ -393,7 +416,7 @@ const VehiculoForm = ({
               <input
                 type="file"
                 multiple
-                accept="image/png, image/jpeg, image/jpg"
+                accept="image/png, image/jpeg, image/jpg, image/webp"
                 className="hidden"
                 onChange={handleImageUpload}
               />
@@ -418,18 +441,28 @@ const VehiculoForm = ({
                 </>
               )}
             </label>
+
+            {/* 🌟 GALERÍA DE FOTOS CON BOTÓN DE ELIMINAR */}
             {currentCar.fotos && currentCar.fotos.length > 0 && (
               <div className="mt-4 grid grid-cols-4 gap-2 animate-in fade-in duration-300">
                 {currentCar.fotos.map((foto, idx) => (
                   <div
                     key={idx}
-                    className="relative aspect-video rounded-lg overflow-hidden border shadow-sm border-slate-200 dark:border-slate-700"
+                    className="relative aspect-video rounded-lg overflow-hidden border shadow-sm border-slate-200 dark:border-slate-700 group"
                   >
                     <img
                       src={foto}
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
+
+                    <button
+                      onClick={(e) => handleRemoveImage(e, idx)}
+                      className="absolute top-1.5 right-1.5 p-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-all shadow-sm outline-none scale-95 hover:scale-100"
+                      title="Eliminar fotografía"
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -678,9 +711,6 @@ const VehiculoForm = ({
   );
 };
 
-// =====================================================================
-// ORQUESTADOR PRINCIPAL Y DATAGRID
-// =====================================================================
 const CatalogoGrid = ({
   isDarkMode,
   vehicles,
@@ -944,6 +974,7 @@ export default function CatalogoManagerView({ isDarkMode }) {
       equipamiento: car.equipamiento || [],
       inspectorReport: car.inspectorReport || "",
       documentos: docsFormatted,
+      fotosData: [],
       isUpdatingMode: true,
     });
     setIsUpdatingMode(true);
@@ -972,13 +1003,13 @@ export default function CatalogoManagerView({ isDarkMode }) {
         "• Carrocería con pintura original de fábrica en excelentes condiciones.\n• Interior limpio sin quemaduras ni olores.",
       documentos: { auctionSheet: null, jaai: null, bl: null },
       fotos: [],
+      fotosData: [],
       isUpdatingMode: false,
     });
     setIsUpdatingMode(false);
     setIsEditing(true);
   };
 
-  // 🌟 LÓGICA DE SUBIDA A SUPABASE
   const handleSaveData = async (completeCarData, showToast) => {
     setIsSaving(true);
     try {
@@ -1007,8 +1038,10 @@ export default function CatalogoManagerView({ isDarkMode }) {
               upsert: false,
             });
 
-          if (error)
-            throw new Error(`No se pudo subir el archivo: ${doc.name}`);
+          if (error) {
+            console.error("Error al subir PDF:", error.message);
+            throw new Error(`No se pudo subir: ${doc.name}`);
+          }
 
           const { data: publicUrlData } = supabase.storage
             .from("jifex-docs")
@@ -1021,10 +1054,51 @@ export default function CatalogoManagerView({ isDarkMode }) {
         }
       }
 
+      const fotosReales = [];
+
+      if (completeCarData.fotos) {
+        completeCarData.fotos.forEach((foto) => {
+          if (!foto.startsWith("blob:")) {
+            fotosReales.push(foto);
+          }
+        });
+      }
+
+      if (completeCarData.fotosData && completeCarData.fotosData.length > 0) {
+        for (const fotoItem of completeCarData.fotosData) {
+          const fileExt = fotoItem.file.name.split(".").pop();
+          const fileName = `foto_${completeCarData.vin}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+          const { data, error } = await supabase.storage
+            .from("jifex-docs")
+            .upload(fileName, fotoItem.file, {
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (error) {
+            console.error("Error al subir foto:", error.message);
+            throw new Error(
+              `No se pudo subir la foto. Razón: ${error.message}`,
+            );
+          }
+
+          const { data: publicUrlData } = supabase.storage
+            .from("jifex-docs")
+            .getPublicUrl(fileName);
+
+          fotosReales.push(publicUrlData.publicUrl);
+        }
+      }
+
       const payloadReadyForDB = {
         ...completeCarData,
         documentos: docsToUpload,
+        fotos: fotosReales,
       };
+
+      delete payloadReadyForDB.fotosData;
+      delete payloadReadyForDB.isUpdatingMode;
 
       const method = isUpdatingMode ? "PUT" : "POST";
 
