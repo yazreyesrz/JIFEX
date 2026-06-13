@@ -59,10 +59,10 @@ export default function ManagerDashboard() {
     localStorage.setItem("jifex_theme", !isDarkMode ? "dark" : "light");
   };
 
-  // 🌟 INTERCEPTAMOS EL LOGOUT
-  const confirmLogout = () => {
+  // 🌟 INTERCEPTAMOS EL LOGOUT DE FORMA ASÍNCRONA
+  const confirmLogout = async () => {
     setLogoutModal(false);
-    logout();
+    await logout();
   };
 
   const changeView = (view) => {

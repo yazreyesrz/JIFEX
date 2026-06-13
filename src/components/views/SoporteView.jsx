@@ -1,265 +1,317 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
+// 🌟 1. IMPORTAMOS TU CONTEXTO DE AUTENTICACIÓN
+import { useAuth } from "@/context/AuthContext";
 import {
+  Plus,
+  Trash2,
+  Clock,
   MessageSquare,
   Send,
-  CheckCircle,
-  Clock,
-  Trash2,
-  Plus,
+  MessageCircle,
+  CheckCircle2,
   AlertCircle,
   User,
-  ArrowLeft,
+  Headset,
+  ShieldAlert,
+  Loader2,
+  Calendar,
 } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
-// Mock de los tickets del cliente
-const initialClientTickets = [
-  {
-    id: "TK-001",
-    asunto: "Duda sobre el Bill of Lading",
-    fecha: "2026-05-26",
-    estado: "Respondido",
-    vin: "S321V-987654",
-    mensajes: [
-      {
-        sender: "client",
-        text: "Hola, ¿cuándo me envían el documento B/L original?",
-        time: "09:30 AM",
-      },
-      {
-        sender: "support",
-        text: "Hola! El B/L original ya fue emitido y se envió por DHL ayer. Te comparto el número de guía por correo.",
-        time: "11:15 AM",
-      },
-    ],
-  },
-  {
-    id: "TK-002",
-    asunto: "Cambio de puerto destino",
-    fecha: "2026-05-20",
-    estado: "Cerrado",
-    vin: "LA350S-123456",
-    mensajes: [
-      {
-        sender: "client",
-        text: "¿Es posible cambiar el puerto a Karachi a última hora?",
-        time: "08:00 AM",
-      },
-      {
-        sender: "support",
-        text: "Lamentablemente el vehículo ya fue embarcado y el destino final no puede ser modificado en esta etapa.",
-        time: "10:30 AM",
-      },
-      {
-        sender: "client",
-        text: "Entiendo, gracias por confirmar.",
-        time: "10:45 AM",
-      },
-    ],
-  },
-];
-
+// 🌟 2. YA NO DEPENDEMOS DE LAS PROPS, USAMOS SOLO isDarkMode
 export default function SoporteView({ isDarkMode }) {
-  const { t } = useTranslation();
-  const [tickets, setTickets] = useState(initialClientTickets);
+  // 🌟 3. EXTRAEMOS AL USUARIO DIRECTO DESDE LA RAÍZ DE TU APP
+  const { user } = useAuth();
+
+  const [viewState, setViewState] = useState("empty");
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
 
-  // Estado para el formulario de NUEVO ticket
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
-  const [newTicket, setNewTicket] = useState({
+  const [tickets, setTickets] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [formData, setFormData] = useState({
     asunto: "",
-    mensaje: "",
     vin: "",
+    mensaje: "",
   });
-
-  // Estado para responder en el chat activo
   const [replyText, setReplyText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  // Manejar el envío de una respuesta en el chat activo
-  const handleReply = (e) => {
-    e.preventDefault();
-    if (!replyText.trim()) return;
+  const fetchTickets = async () => {
+    try {
+      const res = await fetch("/api/tickets");
+      if (res.ok) {
+        const data = await res.json();
 
-    const newMessage = {
-      sender: "client",
-      text: replyText,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
+        const misTickets = data.filter((ticket) => {
+          if (!user) return false;
 
-    const updatedTicket = {
-      ...selectedTicket,
-      estado: "Abierto", // Cambia el estado a abierto al responder
-      mensajes: [...selectedTicket.mensajes, newMessage],
-    };
+          const miId = String(user.id).trim().toLowerCase();
+          const miUsuario = String(user.username).trim().toLowerCase();
 
-    setSelectedTicket(updatedTicket);
-    setTickets(
-      tickets.map((tk) => (tk.id === updatedTicket.id ? updatedTicket : tk)),
-    );
-    setReplyText("");
-  };
+          const tId = String(ticket.clienteId || "")
+            .trim()
+            .toLowerCase();
+          const tUser = String(
+            ticket.clienteUsuario || ticket.clienteNombre || "",
+          )
+            .trim()
+            .toLowerCase();
 
-  // Manejar la creación de un nuevo ticket
-  const handleCreateTicket = (e) => {
-    e.preventDefault();
-    if (!newTicket.asunto || !newTicket.mensaje) return;
+          return (
+            (tId !== "" && (tId === miId || tId === miUsuario)) ||
+            (tUser !== "" && (tUser === miId || tUser === miUsuario))
+          );
+        });
 
-    const newTk = {
-      id: `TK-00${tickets.length + 3}`,
-      asunto: newTicket.asunto,
-      fecha: new Date().toISOString().split("T")[0],
-      estado: "Abierto",
-      vin: newTicket.vin,
-      mensajes: [
-        {
-          sender: "client",
-          text: newTicket.mensaje,
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ],
-    };
-
-    setTickets([newTk, ...tickets]);
-    setIsCreatingNew(false);
-    setSelectedTicket(newTk);
-    setNewTicket({ asunto: "", mensaje: "", vin: "" });
-  };
-
-  // Manejar la eliminación de un ticket del historial
-  const handleDeleteTicket = (id, e) => {
-    e.stopPropagation(); // Evita que se seleccione la tarjeta al hacer clic en borrar
-    if (
-      window.confirm("¿Estás seguro de eliminar este ticket del historial?")
-    ) {
-      setTickets(tickets.filter((tk) => tk.id !== id));
-      if (selectedTicket && selectedTicket.id === id) {
-        setSelectedTicket(null);
+        setTickets(misTickets);
       }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Volvemos a consultar si el usuario cambia (ej. si apenas cargó el login)
+  useEffect(() => {
+    if (user) {
+      fetchTickets();
+    }
+  }, [user]);
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+
+    const fecha = d.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const hora = d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return `${fecha} • ${hora}`;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // 🌟 BLOQUEO: Si por alguna razón el usuario aún no carga, no lo dejamos mandar el ticket vacío
+    if (!user || !user.id) {
+      alert(
+        "Error: No se ha detectado tu sesión de usuario. Por favor recarga la página.",
+      );
+      return;
+    }
+
+    if (!formData.asunto || !formData.mensaje) return;
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "NEW_TICKET",
+          asunto: formData.asunto,
+          vin: formData.vin,
+          mensaje: formData.mensaje,
+          // AQUÍ MANDAMOS LOS DATOS 100% REALES DEL CLIENTE
+          clienteId: user.id,
+          clienteUsuario: user.username,
+          clienteNombre: user.nombre || user.username,
+        }),
+      });
+
+      if (res.ok) {
+        const nuevoTicket = await res.json();
+        setTickets([nuevoTicket, ...tickets]);
+        setShowSuccess(true);
+        setFormData({ asunto: "", vin: "", mensaje: "" });
+
+        setTimeout(() => {
+          setShowSuccess(false);
+          setSelectedTicket(nuevoTicket);
+          setViewState("detail");
+        }, 3000);
+      } else {
+        alert("Hubo un error al crear tu ticket.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReply = async (e) => {
+    e.preventDefault();
+    if (!replyText.trim() || !user) return;
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "REPLY",
+          ticketId: selectedTicket.id,
+          mensaje: replyText,
+          remitente: "CLIENTE",
+          usuarioId: user.id,
+        }),
+      });
+
+      if (res.ok) {
+        setReplyText("");
+        fetchTickets();
+        const nuevoMensaje = await res.json();
+        setSelectedTicket((prev) => ({
+          ...prev,
+          estado: "ABIERTO",
+          mensajes: [...prev.mensajes, nuevoMensaje],
+        }));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenNew = () => {
+    setViewState("new");
+    setSelectedTicket(null);
+  };
+  const handleSelectTicket = (ticket) => {
+    setSelectedTicket(ticket);
+    setViewState("detail");
+  };
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleDeleteClick = (e, id) => {
+    e.stopPropagation();
+    setDeleteModal({ isOpen: true, id });
+  };
+
+  const confirmDelete = async () => {
+    try {
+      const res = await fetch(`/api/tickets?id=${deleteModal.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setTickets(tickets.filter((t) => t.id !== deleteModal.id));
+        if (selectedTicket?.id === deleteModal.id) {
+          setViewState("empty");
+          setSelectedTicket(null);
+        }
+        setDeleteModal({ isOpen: false, id: null });
+      } else {
+        alert("Hubo un error al eliminar el ticket de la base de datos.");
+      }
+    } catch (error) {
+      console.error("Error al borrar el ticket:", error);
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* CABECERA */}
-      <div
-        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
-      >
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto pt-2">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4">
         <div>
           <h1
-            className={`text-3xl font-black tracking-tight flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+            className={`text-3xl sm:text-4xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-[#0f172a]"}`}
           >
             Centro de Soporte
           </h1>
-          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1.5">
             Comunícate directamente con tu manager asignado
           </p>
         </div>
-
         <button
-          onClick={() => {
-            setIsCreatingNew(true);
-            setSelectedTicket(null);
-          }}
-          className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-xs uppercase tracking-wider py-3 px-6 rounded-xl transition-all shadow-md active:scale-95 outline-none w-full sm:w-auto"
+          onClick={handleOpenNew}
+          className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs uppercase tracking-wider py-3 px-6 rounded-xl transition-all shadow-md active:scale-95 outline-none"
         >
           <Plus size={16} /> Abrir Nuevo Ticket
         </button>
       </div>
 
-      {/* DISEÑO DIVIDIDO (Split View) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* COLUMNA IZQUIERDA: HISTORIAL DE TICKETS */}
+        {/* HISTORIAL DE TICKETS */}
         <div
-          className={`lg:col-span-1 rounded-3xl border flex flex-col h-[600px] overflow-hidden ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
+          className={`rounded-3xl border p-6 flex flex-col h-[650px] shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
         >
-          <div
-            className={`p-5 border-b flex items-center gap-2 ${isDarkMode ? "border-slate-800" : "border-slate-100"}`}
-          >
-            <MessageSquare size={16} className="text-amber-500" />
-            <h3
-              className={`text-xs font-black uppercase tracking-wider ${isDarkMode ? "text-white" : "text-slate-800"}`}
-            >
-              Historial de Tickets
-            </h3>
-          </div>
+          <h3 className="text-xs font-black uppercase tracking-wider mb-6 flex items-center gap-2 text-slate-800 dark:text-white">
+            <MessageSquare size={16} className="text-amber-500" /> Mis Tickets
+          </h3>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {tickets.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">
-                <AlertCircle size={24} className="mx-auto mb-2 opacity-50" />
-                <p className="text-xs font-bold uppercase tracking-wider">
-                  No tienes tickets abiertos
+          <div className="space-y-4 overflow-y-auto pr-2 flex-1 scrollbar-hide">
+            {isLoading ? (
+              <div className="text-center py-10 opacity-50">
+                <Loader2
+                  className="mx-auto mb-2 text-slate-400 animate-spin"
+                  size={32}
+                />
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="text-center py-10 opacity-50">
+                <MessageSquare
+                  className="mx-auto mb-2 text-slate-400"
+                  size={32}
+                />
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  No tienes tickets activos
                 </p>
               </div>
             ) : (
               tickets.map((ticket) => (
                 <div
                   key={ticket.id}
-                  onClick={() => {
-                    setSelectedTicket(ticket);
-                    setIsCreatingNew(false);
-                  }}
-                  className={`relative rounded-2xl border p-4 cursor-pointer transition-all duration-200 outline-none active:scale-[0.98] ${
-                    selectedTicket?.id === ticket.id
-                      ? isDarkMode
-                        ? "bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/50"
-                        : "bg-amber-50 border-amber-300 ring-1 ring-amber-400/50"
-                      : isDarkMode
-                        ? "bg-[#0b121f]/50 border-slate-700 hover:border-slate-500"
-                        : "bg-slate-50 border-slate-200 hover:border-slate-300"
-                  }`}
+                  onClick={() => handleSelectTicket(ticket)}
+                  className={`p-5 rounded-2xl border transition-all cursor-pointer group relative ${selectedTicket?.id === ticket.id ? (isDarkMode ? "bg-amber-500/10 border-amber-500/30" : "bg-amber-50 border-amber-200 shadow-md") : isDarkMode ? "bg-[#0b121f]/50 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"}`}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  {selectedTicket?.id === ticket.id && (
+                    <div className="absolute left-0 top-4 bottom-4 w-1 bg-amber-500 rounded-r-full" />
+                  )}
+                  <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-500/10 px-1.5 py-0.5 rounded">
-                        {ticket.id}
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {ticket.id.slice(0, 8)}
                       </span>
                       <span
-                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                          ticket.estado === "Respondido"
-                            ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                            : ticket.estado === "Cerrado"
-                              ? "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                              : "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                        }`}
+                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${ticket.estado === "RESUELTO" ? "bg-emerald-500/10 text-emerald-500" : ticket.estado === "ABIERTO" ? "bg-amber-500/10 text-amber-500" : "bg-slate-500/10 text-slate-500"}`}
                       >
                         {ticket.estado}
                       </span>
                     </div>
-                    {/* Botón Eliminar Ticket */}
                     <button
-                      onClick={(e) => handleDeleteTicket(ticket.id, e)}
-                      className={`p-1.5 rounded-lg transition-colors opacity-0 group-hover:opacity-100 absolute right-3 top-3 ${
-                        isDarkMode
-                          ? "text-red-400 hover:bg-red-500/20"
-                          : "text-red-500 hover:bg-red-50"
-                      }`}
-                      style={{ opacity: 1 }} // Siempre visible en móvil
+                      onClick={(e) => handleDeleteClick(e, ticket.id)}
+                      className="text-red-400 hover:text-red-500 transition-colors opacity-60 hover:opacity-100 outline-none"
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
-
                   <h4
-                    className={`text-sm font-black line-clamp-1 mb-1 pr-6 ${isDarkMode ? "text-slate-200" : "text-slate-800"}`}
+                    className={`text-sm font-black mb-1.5 line-clamp-1 ${isDarkMode ? "text-white" : "text-[#0f172a]"}`}
                   >
                     {ticket.asunto}
                   </h4>
-                  <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
-                    {ticket.mensajes[ticket.mensajes.length - 1].text}
+                  <p
+                    className={`text-xs line-clamp-2 leading-relaxed mb-4 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}
+                  >
+                    {ticket.mensajes?.[0]?.texto || "Sin mensajes"}
                   </p>
 
-                  <div className="mt-3 flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                    <span>{ticket.fecha}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={10} />{" "}
-                      {ticket.mensajes[ticket.mensajes.length - 1].time}
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 font-mono pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                    <span className="flex items-center gap-1.5">
+                      <Clock size={12} className="text-slate-400" />{" "}
+                      {formatDateTime(ticket.updatedAt || ticket.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -268,192 +320,252 @@ export default function SoporteView({ isDarkMode }) {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA: CHAT / FORMULARIO */}
+        {/* PANEL DINÁMICO */}
         <div
-          className={`lg:col-span-2 rounded-3xl border flex flex-col h-[600px] overflow-hidden shadow-xl ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
+          className={`lg:col-span-2 rounded-3xl border p-8 shadow-sm flex flex-col h-[650px] overflow-hidden ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
         >
-          {/* VISTA 1: CREAR NUEVO TICKET */}
-          {isCreatingNew ? (
-            <div className="flex flex-col h-full p-6 sm:p-8 animate-in slide-in-from-bottom-4 duration-300">
+          {viewState === "empty" && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300">
+              <div className="mb-4 text-slate-300 dark:text-slate-700">
+                <MessageCircle size={64} strokeWidth={1.5} />
+              </div>
               <h2
-                className={`text-xl font-black mb-6 ${isDarkMode ? "text-white" : "text-slate-900"}`}
-              >
-                Redactar Nuevo Ticket
-              </h2>
-              <form
-                onSubmit={handleCreateTicket}
-                className="space-y-5 flex-1 flex flex-col"
-              >
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pl-1">
-                    Asunto Principal
-                  </label>
-                  <input
-                    type="text"
-                    value={newTicket.asunto}
-                    onChange={(e) =>
-                      setNewTicket({ ...newTicket, asunto: e.target.value })
-                    }
-                    placeholder="Ej. Problema con los documentos aduanales"
-                    className={`mt-1.5 w-full rounded-xl border py-3 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pl-1">
-                    Chasis Relacionado (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newTicket.vin}
-                    onChange={(e) =>
-                      setNewTicket({ ...newTicket, vin: e.target.value })
-                    }
-                    placeholder="Ej. S321V-987654"
-                    className={`mt-1.5 w-full rounded-xl border py-3 px-4 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-amber-500" : "bg-slate-50 border-slate-200 text-amber-600"}`}
-                  />
-                </div>
-                <div className="flex-1 flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pl-1">
-                    Describe tu requerimiento
-                  </label>
-                  <textarea
-                    value={newTicket.mensaje}
-                    onChange={(e) =>
-                      setNewTicket({ ...newTicket, mensaje: e.target.value })
-                    }
-                    placeholder="Detalla tu problema para que nuestro equipo te ayude rápidamente..."
-                    className={`mt-1.5 flex-1 w-full rounded-xl border py-3 px-4 text-sm outline-none resize-none focus:ring-2 focus:ring-amber-500/40 transition-all leading-relaxed ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-700"}`}
-                    required
-                  />
-                </div>
-                <div className="pt-2 flex justify-end">
-                  <button
-                    type="submit"
-                    className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-xs uppercase tracking-wider py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98] outline-none"
-                  >
-                    <Send size={16} /> Enviar Ticket al Manager
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : selectedTicket ? (
-            /* VISTA 2: HILO DE CHAT DEL TICKET */
-            <div className="flex flex-col h-full animate-in slide-in-from-right-4 duration-300">
-              {/* Header del Chat */}
-              <div
-                className={`p-5 border-b shrink-0 flex items-center justify-between ${isDarkMode ? "border-slate-800 bg-[#0b121f]/30" : "border-slate-100 bg-slate-50/50"}`}
-              >
-                <div>
-                  <h3
-                    className={`text-lg font-black tracking-tight line-clamp-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}
-                  >
-                    {selectedTicket.asunto}
-                  </h3>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[10px] font-mono text-slate-400">
-                      Ticket: {selectedTicket.id}
-                    </span>
-                    {selectedTicket.vin && (
-                      <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider bg-amber-500/10 px-2 rounded-md">
-                        VIN: {selectedTicket.vin}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Área de Mensajes */}
-              <div
-                className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 ${isDarkMode ? "bg-[#0b121f]/20" : "bg-slate-50/30"}`}
-              >
-                {selectedTicket.mensajes.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex w-full ${msg.sender === "client" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`flex flex-col gap-1 max-w-[85%] sm:max-w-[75%] ${msg.sender === "client" ? "items-end" : "items-start"}`}
-                    >
-                      <div className="flex items-center gap-2 px-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          {msg.sender === "client" ? "Tú" : "Equipo JIFEX"}
-                        </span>
-                        <span className="text-[9px] font-mono text-slate-500">
-                          {msg.time}
-                        </span>
-                      </div>
-                      <div
-                        className={`p-4 rounded-2xl text-sm leading-relaxed ${
-                          msg.sender === "client"
-                            ? "bg-amber-500 text-slate-900 font-medium rounded-tr-sm shadow-md shadow-amber-500/10"
-                            : isDarkMode
-                              ? "bg-[#1e293b] text-slate-200 rounded-tl-sm border border-slate-700"
-                              : "bg-white text-slate-700 rounded-tl-sm border border-slate-200 shadow-sm"
-                        }`}
-                      >
-                        {msg.text}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Input de Respuesta del Cliente */}
-              <div
-                className={`p-4 border-t ${isDarkMode ? "bg-[#111827] border-slate-800" : "bg-white border-slate-200"}`}
-              >
-                {selectedTicket.estado !== "Cerrado" ? (
-                  <form onSubmit={handleReply} className="flex gap-3">
-                    <input
-                      type="text"
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="Escribe tu respuesta..."
-                      className={`flex-1 rounded-xl border py-3 px-4 text-sm outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#1e293b]/50 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!replyText.trim()}
-                      className="shrink-0 flex items-center justify-center p-3 sm:px-6 rounded-xl bg-amber-500 text-slate-900 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 outline-none"
-                    >
-                      <Send size={18} className="sm:hidden" />
-                      <span className="hidden sm:inline font-black text-xs uppercase tracking-wider">
-                        Responder
-                      </span>
-                    </button>
-                  </form>
-                ) : (
-                  <div className="text-center py-2 text-xs font-bold text-slate-500 flex items-center justify-center gap-2 uppercase tracking-wider">
-                    <CheckCircle size={14} className="text-slate-400" /> El
-                    ticket ha sido cerrado por el equipo de soporte.
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* VISTA 3: ESTADO VACÍO (Nada seleccionado) */
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 p-6 text-center animate-in zoom-in-95 duration-300">
-              <MessageSquare size={48} className="mb-4 opacity-20" />
-              <h3
-                className={`text-lg font-black tracking-tight mb-2 ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
+                className={`text-xl font-black mb-2 ${isDarkMode ? "text-white" : "text-[#0f172a]"}`}
               >
                 Selecciona un ticket del historial
-              </h3>
-              <p className="text-xs max-w-sm mb-6 leading-relaxed">
+              </h2>
+              <p className="text-sm text-slate-400 max-w-sm mx-auto mb-8">
                 Selecciona un ticket para ver la conversación con el equipo de
                 soporte o crea uno nuevo para recibir asistencia.
               </p>
               <button
-                onClick={() => setIsCreatingNew(true)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors outline-none active:scale-95 ${isDarkMode ? "border-slate-700 hover:bg-slate-800 text-slate-300" : "border-slate-300 hover:bg-slate-50 text-slate-600"}`}
+                onClick={handleOpenNew}
+                className={`flex items-center gap-2 px-6 py-3 rounded-full border text-xs font-bold uppercase tracking-wider transition-colors outline-none active:scale-95 ${isDarkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
               >
-                <Plus size={14} /> Abrir Nuevo Ticket
+                <Plus size={16} /> Abrir Nuevo Ticket
               </button>
+            </div>
+          )}
+
+          {viewState === "new" && (
+            <div className="flex-1 flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <h2
+                className={`text-2xl font-black tracking-tight mb-8 ${isDarkMode ? "text-white" : "text-[#0f172a]"}`}
+              >
+                Redactar Nuevo Ticket
+              </h2>
+              {showSuccess ? (
+                <div
+                  className={`flex-1 flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed animate-in zoom-in-95 duration-300 ${isDarkMode ? "border-emerald-500/30 bg-emerald-500/10" : "border-emerald-200 bg-emerald-50"}`}
+                >
+                  <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center text-white mb-4 shadow-lg shadow-emerald-500/30">
+                    <CheckCircle2 size={32} />
+                  </div>
+                  <h3
+                    className={`text-xl font-black mb-2 ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`}
+                  >
+                    ¡Ticket Enviado con Éxito!
+                  </h3>
+                  <p
+                    className={`text-sm ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}
+                  >
+                    El manager logístico ha sido notificado. Te redirigiremos a
+                    la conversación en un momento...
+                  </p>
+                </div>
+              ) : (
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex-1 flex flex-col space-y-6"
+                >
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                      Asunto Principal
+                    </label>
+                    <input
+                      type="text"
+                      name="asunto"
+                      value={formData.asunto}
+                      onChange={handleChange}
+                      required
+                      placeholder="Ej. Problema con los documentos aduanales"
+                      className={`w-full rounded-2xl border py-4 px-5 text-sm outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-white placeholder-slate-600" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400"}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                      Chasis Relacionado (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      name="vin"
+                      value={formData.vin}
+                      onChange={handleChange}
+                      placeholder="Ej. S321V-987654"
+                      className={`w-full rounded-2xl border py-4 px-5 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-amber-500 placeholder-slate-600" : "bg-white border-slate-200 text-amber-500 placeholder-slate-400"}`}
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                      Describe tu requerimiento
+                    </label>
+                    <textarea
+                      name="mensaje"
+                      value={formData.mensaje}
+                      onChange={handleChange}
+                      required
+                      placeholder="Detalla tu problema para que nuestro equipo te ayude rápidamente..."
+                      className={`w-full flex-1 min-h-[150px] rounded-2xl border py-4 px-5 text-sm resize-none outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-white placeholder-slate-600" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400"}`}
+                    ></textarea>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs uppercase tracking-wider py-4 px-8 rounded-xl transition-all shadow-md active:scale-95 outline-none disabled:opacity-70"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />{" "}
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          Enviar Ticket al Manager <Send size={16} />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {viewState === "detail" && selectedTicket && (
+            <div className="flex-1 flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
+              <div
+                className={`pb-4 border-b flex items-center justify-between ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+              >
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h2
+                      className={`text-xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                    >
+                      {selectedTicket.asunto}
+                    </h2>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${selectedTicket.estado === "RESUELTO" ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"}`}
+                    >
+                      {selectedTicket.estado}
+                    </span>
+                  </div>
+                  <p className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-2">
+                    Ticket ID: {selectedTicket.id.slice(0, 8)}{" "}
+                    <span className="opacity-50">|</span> <Calendar size={12} />{" "}
+                    {formatDateTime(selectedTicket.createdAt)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-6 space-y-6 scrollbar-hide">
+                {selectedTicket.mensajes?.map((msg) => {
+                  const isManager = msg.remitente === "MANAGER";
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex w-full ${!isManager ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`flex flex-col max-w-[80%] ${!isManager ? "items-end" : "items-start"}`}
+                      >
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-2">
+                          {!isManager ? "Tú" : "JIFEX Support"} •{" "}
+                          <span className="font-mono">
+                            {formatDateTime(msg.createdAt)}
+                          </span>
+                        </span>
+                        <div
+                          className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                            !isManager
+                              ? "bg-amber-500 text-slate-900 rounded-tr-none shadow-md shadow-amber-500/20"
+                              : isDarkMode
+                                ? "bg-[#0b121f] text-slate-200 border border-slate-800 rounded-tl-none"
+                                : "bg-slate-50 border border-slate-200 text-slate-700 rounded-tl-none"
+                          }`}
+                        >
+                          {msg.texto}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <form
+                onSubmit={handleReply}
+                className={`pt-4 border-t flex gap-3 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+              >
+                <input
+                  type="text"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Escribe tu respuesta..."
+                  className={`flex-1 rounded-xl border py-3.5 px-4 text-sm outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-white placeholder-slate-600" : "bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400"}`}
+                />
+                <button
+                  disabled={isSubmitting}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-900 p-3.5 rounded-xl transition-all shadow-md active:scale-95 outline-none disabled:opacity-70"
+                >
+                  {isSubmitting ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Send size={18} />
+                  )}
+                </button>
+              </form>
             </div>
           )}
         </div>
       </div>
+
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-300">
+          <div
+            className={`w-full max-w-sm rounded-3xl border p-7 shadow-2xl text-center space-y-5 transform transition-all duration-300 scale-100 ${isDarkMode ? "border-slate-800 bg-[#111827]" : "border-slate-100 bg-white"}`}
+          >
+            <div className="mx-auto w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+              <ShieldAlert size={26} />
+            </div>
+            <div className="space-y-1.5">
+              <h3
+                className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+              >
+                Eliminar Ticket
+              </h3>
+              <p
+                className={`text-xs leading-relaxed ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}
+              >
+                ¿Estás seguro de que deseas eliminar este ticket
+                permanentemente? No podrás recuperar la conversación.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, id: null })}
+                className={`flex-1 rounded-xl border font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer outline-none active:scale-95 ${isDarkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300" : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"}`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95 outline-none"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

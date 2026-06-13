@@ -1,4 +1,8 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
+// 🌟 1. IMPORTAMOS SUPABASE
+import { createClient } from "@supabase/supabase-js";
 import {
   Plus,
   Edit,
@@ -17,8 +21,16 @@ import {
   ArrowRight,
   ArrowLeft,
   ShieldAlert,
+  Loader2,
+  CheckCircle2,
+  CheckCircle,
 } from "lucide-react";
-import { mockVehicles } from "@/data/mockVehicles";
+
+// 🌟 2. INICIALIZAMOS LA CONEXIÓN A TU NUBE
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase =
+  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // =====================================================================
 // COMPONENTE 1: FORMULARIO DE CREACIÓN Y EDICIÓN
@@ -29,9 +41,15 @@ const VehiculoForm = ({
   setCurrentCar,
   setIsEditing,
   onSave,
+  isSaving,
 }) => {
   const [step, setStep] = useState(1);
-  const [formError, setFormError] = useState("");
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "error",
+  });
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const marcasOpciones = [
     "Toyota",
@@ -43,7 +61,6 @@ const VehiculoForm = ({
     "Subaru",
     "Mitsubishi",
   ];
-
   const equipamientoOpciones = [
     "Faros LED Inteligentes",
     "Cámara de Reversa 360°",
@@ -55,9 +72,40 @@ const VehiculoForm = ({
     "Asientos de Cuero",
   ];
 
+  const showToast = (message, type = "error") => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: "", type }), 4000);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCurrentCar((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePrecioChange = (e) => {
+    const rawValue = e.target.value.replace(/\D/g, "");
+    if (!rawValue) {
+      setCurrentCar((prev) => ({ ...prev, precioCNF: "" }));
+      return;
+    }
+    const formattedNumber = new Intl.NumberFormat("en-US").format(rawValue);
+    setCurrentCar((prev) => ({
+      ...prev,
+      precioCNF: `$ ${formattedNumber} USD`,
+    }));
+  };
+
+  const handleKilometrajeChange = (e) => {
+    const rawValue = e.target.value.replace(/\D/g, "");
+    if (!rawValue) {
+      setCurrentCar((prev) => ({ ...prev, kilometraje: "" }));
+      return;
+    }
+    const formattedNumber = new Intl.NumberFormat("en-US").format(rawValue);
+    setCurrentCar((prev) => ({
+      ...prev,
+      kilometraje: `${formattedNumber} km`,
+    }));
   };
 
   const handleCheckboxChange = (e, feature) => {
@@ -70,18 +118,46 @@ const VehiculoForm = ({
     }));
   };
 
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const newFotos = files.map((file) => URL.createObjectURL(file));
+      setCurrentCar((prev) => ({
+        ...prev,
+        fotos: [...(prev.fotos || []), ...newFotos],
+      }));
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000);
+    }
+  };
+
+  // 🌟 GUARDAMOS EL ARCHIVO INTACTO (Sin Base64)
   const handleFileUpload = (e, docKey) => {
     const file = e.target.files[0];
     if (file) {
       setCurrentCar((prev) => ({
         ...prev,
-        documentos: { ...prev.documentos, [docKey]: file },
+        documentos: {
+          ...prev.documentos,
+          [docKey]: {
+            name: file.name,
+            file: file, // 🌟 Se guarda el archivo crudo
+          },
+        },
       }));
     }
   };
 
+  const handleRemoveFile = (e, docKey) => {
+    e.preventDefault();
+    setCurrentCar((prev) => {
+      const nuevosDocumentos = { ...prev.documentos };
+      nuevosDocumentos[docKey] = null;
+      return { ...prev, documentos: nuevosDocumentos };
+    });
+  };
+
   const nextStep = () => {
-    setFormError("");
     if (step === 1) {
       if (
         !currentCar.marca ||
@@ -89,8 +165,9 @@ const VehiculoForm = ({
         !currentCar.vin ||
         !currentCar.precioCNF
       ) {
-        setFormError(
+        showToast(
           "Por favor, completa Marca, Modelo, VIN y Precio para continuar.",
+          "error",
         );
         return;
       }
@@ -100,8 +177,9 @@ const VehiculoForm = ({
         !currentCar.colorExterior ||
         !currentCar.gradoSubasta
       ) {
-        setFormError(
+        showToast(
           "Por favor, completa Kilometraje, Color y Grado de Subasta.",
+          "error",
         );
         return;
       }
@@ -110,20 +188,18 @@ const VehiculoForm = ({
   };
 
   const prevStep = () => {
-    setFormError("");
     setStep((prev) => prev - 1);
   };
 
   const handleSubmit = () => {
-    setFormError("");
-    onSave(currentCar, currentCar);
+    onSave(currentCar, showToast);
   };
 
   const DocumentUploadBtn = ({ title, docKey }) => {
     const file = currentCar.documentos?.[docKey];
     return (
-      <label
-        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-colors outline-none active:scale-[0.98] ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 hover:border-slate-500" : "bg-slate-50 border-slate-200 hover:border-slate-300"}`}
+      <div
+        className={`flex items-center justify-between p-3.5 rounded-xl border transition-colors ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700" : "bg-slate-50 border-slate-200"}`}
       >
         <div className="flex items-center gap-3">
           <FileBadge
@@ -132,29 +208,53 @@ const VehiculoForm = ({
           />
           <span className="text-xs font-semibold">{title}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-[10px] font-bold truncate max-w-[120px] ${file ? "text-emerald-500" : "text-slate-400"}`}
-          >
-            {file ? file.name : "Subir PDF"}
-          </span>
-          <Upload
-            size={14}
-            className={file ? "text-emerald-500" : "text-slate-400"}
-          />
-        </div>
-        <input
-          type="file"
-          accept=".pdf, application/pdf"
-          className="hidden"
-          onChange={(e) => handleFileUpload(e, docKey)}
-        />
-      </label>
+
+        {file ? (
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold truncate max-w-[120px] text-emerald-500">
+              {file.name || "Documento Guardado"}
+            </span>
+            <button
+              onClick={(e) => handleRemoveFile(e, docKey)}
+              className="p-1.5 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors outline-none cursor-pointer"
+              title="Eliminar archivo"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ) : (
+          <label className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-amber-500 transition-colors">
+            <span className="text-[10px] font-bold">Subir PDF</span>
+            <Upload size={14} />
+            <input
+              type="file"
+              accept=".pdf, application/pdf"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, docKey)}
+            />
+          </label>
+        )}
+      </div>
     );
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in zoom-in duration-300">
+    <div className="space-y-6 animate-in fade-in zoom-in duration-300 relative">
+      {toast.visible && (
+        <div
+          className={`absolute -top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-full shadow-2xl border backdrop-blur-md animate-in slide-in-from-top-4 fade-in duration-300 ${toast.type === "error" ? (isDarkMode ? "bg-red-500/20 border-red-500/30 text-red-400" : "bg-red-50/90 border-red-200 text-red-600") : isDarkMode ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" : "bg-emerald-50/90 border-emerald-200 text-emerald-600"}`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle size={18} className="shrink-0" />
+          ) : (
+            <CheckCircle size={18} className="shrink-0" />
+          )}
+          <p className="text-xs font-bold uppercase tracking-wider">
+            {toast.message}
+          </p>
+        </div>
+      )}
+
       <div
         className={`flex items-center justify-between pb-4 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
       >
@@ -187,28 +287,6 @@ const VehiculoForm = ({
           className={`h-2 flex-1 rounded-full transition-colors duration-500 ${step >= 3 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" : isDarkMode ? "bg-slate-800" : "bg-slate-200"}`}
         />
       </div>
-      <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-6">
-        <span className={step >= 1 ? "text-amber-500" : ""}>
-          1. Datos Principales
-        </span>
-        <span className={step >= 2 ? "text-amber-500" : ""}>
-          2. Ficha Técnica
-        </span>
-        <span className={step >= 3 ? "text-amber-500" : ""}>
-          3. Documentación
-        </span>
-      </div>
-
-      {formError && (
-        <div
-          className={`flex items-center gap-3 p-4 rounded-xl border animate-in slide-in-from-top-2 ${isDarkMode ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
-        >
-          <AlertCircle size={20} className="shrink-0" />
-          <p className="text-xs font-bold uppercase tracking-wider">
-            {formError}
-          </p>
-        </div>
-      )}
 
       {step === 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-right-4 duration-300">
@@ -262,8 +340,9 @@ const VehiculoForm = ({
                     type="text"
                     value={currentCar.vin}
                     onChange={handleChange}
+                    disabled={currentCar.isUpdatingMode}
                     placeholder="S321V-987654"
-                    className={`mt-1.5 w-full rounded-xl border py-2.5 px-4 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500/40 ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-amber-500" : "bg-slate-50 border-slate-200 text-amber-600"}`}
+                    className={`mt-1.5 w-full rounded-xl border py-2.5 px-4 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500/40 ${currentCar.isUpdatingMode ? "opacity-50 cursor-not-allowed" : ""} ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-amber-500" : "bg-slate-50 border-slate-200 text-amber-600"}`}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -275,8 +354,8 @@ const VehiculoForm = ({
                       name="precioCNF"
                       type="text"
                       value={currentCar.precioCNF}
-                      onChange={handleChange}
-                      placeholder="$0 USD"
+                      onChange={handlePrecioChange}
+                      placeholder="$ 0 USD"
                       className={`mt-1.5 w-full rounded-xl border py-2.5 px-4 text-sm font-black outline-none focus:ring-2 focus:ring-amber-500/40 ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-emerald-400" : "bg-slate-50 border-slate-200 text-emerald-600"}`}
                     />
                   </div>
@@ -290,11 +369,11 @@ const VehiculoForm = ({
                       onChange={handleChange}
                       className={`mt-1.5 w-full rounded-xl border py-2.5 px-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500/40 ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                     >
-                      <option value="Disponible">Disponible</option>
-                      <option value="En exportación">En exportación</option>
-                      <option value="Embarcado">Embarcado</option>
-                      <option value="En tránsito">En tránsito</option>
-                      <option value="Entregado">Entregado</option>
+                      <option value="DISPONIBLE">Disponible</option>
+                      <option value="EN_EXPORTACION">En exportación</option>
+                      <option value="EMBARCADO">Embarcado</option>
+                      <option value="EN_TRANSITO">En tránsito</option>
+                      <option value="ENTREGADO">Entregado</option>
                     </select>
                   </div>
                 </div>
@@ -308,22 +387,53 @@ const VehiculoForm = ({
             <h3 className="text-sm font-black uppercase tracking-wider mb-4 flex items-center gap-2 text-amber-500">
               <ImageIcon size={16} /> Galería Visual
             </h3>
-            <div
-              className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center transition-colors cursor-pointer group ${isDarkMode ? "border-slate-700 hover:border-amber-500 bg-[#0b121f]/50" : "border-slate-300 hover:border-amber-400 bg-slate-50"}`}
+            <label
+              className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center transition-all cursor-pointer group relative overflow-hidden ${uploadSuccess ? "border-emerald-500 bg-emerald-500/10" : isDarkMode ? "border-slate-700 hover:border-amber-500 bg-[#0b121f]/50" : "border-slate-300 hover:border-amber-400 bg-slate-50"}`}
             >
-              <UploadCloud
-                size={32}
-                className="text-slate-400 group-hover:text-amber-500 mb-3 transition-colors"
+              <input
+                type="file"
+                multiple
+                accept="image/png, image/jpeg, image/jpg"
+                className="hidden"
+                onChange={handleImageUpload}
               />
-              <p
-                className={`text-xs font-bold ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
-              >
-                Subir Fotografías
-              </p>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Arrastra imágenes JPG/PNG
-              </p>
-            </div>
+              {uploadSuccess ? (
+                <div className="animate-in zoom-in duration-300 flex flex-col items-center">
+                  <CheckCircle2 size={32} className="text-emerald-500 mb-3" />
+                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    ¡Fotos agregadas!
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <UploadCloud
+                    size={32}
+                    className="text-slate-400 group-hover:text-amber-500 mb-3 transition-colors"
+                  />
+                  <p
+                    className={`text-xs font-bold ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
+                  >
+                    Subir Fotografías
+                  </p>
+                </>
+              )}
+            </label>
+            {currentCar.fotos && currentCar.fotos.length > 0 && (
+              <div className="mt-4 grid grid-cols-4 gap-2 animate-in fade-in duration-300">
+                {currentCar.fotos.map((foto, idx) => (
+                  <div
+                    key={idx}
+                    className="relative aspect-video rounded-lg overflow-hidden border shadow-sm border-slate-200 dark:border-slate-700"
+                  >
+                    <img
+                      src={foto}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -341,13 +451,13 @@ const VehiculoForm = ({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             <div>
               <label className="text-[10px] font-bold uppercase text-slate-500 pl-1">
-                Mileage / Kilometraje
+                Mileage
               </label>
               <input
                 name="kilometraje"
                 type="text"
                 value={currentCar.kilometraje}
-                onChange={handleChange}
+                onChange={handleKilometrajeChange}
                 placeholder="Ej. 16,800 km"
                 className={`mt-1.5 w-full rounded-xl border py-2.5 px-4 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
               />
@@ -380,9 +490,6 @@ const VehiculoForm = ({
               >
                 <option value="Automática">Automática</option>
                 <option value="CVT">CVT</option>
-                <option value="Automática Dual Clutch">
-                  Automática Dual Clutch
-                </option>
                 <option value="Manual">Manual</option>
               </select>
             </div>
@@ -527,7 +634,6 @@ const VehiculoForm = ({
               value={currentCar.inspectorReport}
               onChange={handleChange}
               rows="12"
-              placeholder="Escribe las observaciones oficiales aquí..."
               className={`w-full rounded-xl border p-4 text-xs font-mono outline-none focus:ring-2 focus:ring-amber-500/40 transition-all resize-none leading-relaxed ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"}`}
             />
           </div>
@@ -556,9 +662,15 @@ const VehiculoForm = ({
         ) : (
           <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider py-3 px-8 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] outline-none"
+            disabled={isSaving}
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider py-3 px-8 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] outline-none disabled:opacity-70"
           >
-            <Save size={16} /> Publicar Vehículo
+            {isSaving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+            {isSaving ? "Guardando..." : "Publicar Vehículo"}
           </button>
         )}
       </div>
@@ -567,7 +679,7 @@ const VehiculoForm = ({
 };
 
 // =====================================================================
-// COMPONENTE 2: DATA GRID (Tabla del inventario dividida en dos vistas)
+// ORQUESTADOR PRINCIPAL Y DATAGRID
 // =====================================================================
 const CatalogoGrid = ({
   isDarkMode,
@@ -577,6 +689,7 @@ const CatalogoGrid = ({
   handleCreateNew,
   handleEdit,
   handleDeleteClick,
+  isLoading,
 }) => {
   const [selectedBrand, setSelectedBrand] = useState(null);
 
@@ -588,9 +701,7 @@ const CatalogoGrid = ({
 
   const groupedVehicles = filteredVehicles.reduce((acc, car) => {
     const brand = car.marca || car.modelo.split(" ")[0] || "Otras Marcas";
-    if (!acc[brand]) {
-      acc[brand] = [];
-    }
+    if (!acc[brand]) acc[brand] = [];
     acc[brand].push(car);
     return acc;
   }, {});
@@ -607,7 +718,7 @@ const CatalogoGrid = ({
             Gestión de Catálogo
           </h1>
           <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">
-            Administra el inventario global de JIFEX
+            Administra el inventario global conectado a Supabase
           </p>
         </div>
 
@@ -635,7 +746,29 @@ const CatalogoGrid = ({
         </div>
       </div>
 
-      {!selectedBrand ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center p-20 space-y-4">
+          <Loader2 size={40} className="text-amber-500 animate-spin" />
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+            Conectando con Supabase...
+          </p>
+        </div>
+      ) : vehicles.length === 0 ? (
+        <div
+          className={`p-12 text-center rounded-3xl border border-dashed ${isDarkMode ? "border-slate-700 bg-slate-800/30" : "border-slate-300 bg-slate-50"}`}
+        >
+          <CarFront size={48} className="mx-auto mb-4 text-slate-400" />
+          <p
+            className={`text-lg font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
+          >
+            Tu inventario está vacío
+          </p>
+          <p className="text-sm text-slate-500 mt-2 mb-6">
+            Haz clic en "Publicar Auto" para subir tu primer vehículo a la base
+            de datos real.
+          </p>
+        </div>
+      ) : !selectedBrand ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in zoom-in-95 duration-300">
           {Object.entries(groupedVehicles).map(([brand, cars]) => (
             <div
@@ -658,11 +791,6 @@ const CatalogoGrid = ({
               </span>
             </div>
           ))}
-          {Object.keys(groupedVehicles).length === 0 && (
-            <div className="col-span-full p-8 text-center text-slate-400 text-sm">
-              No se encontraron marcas con tu búsqueda.
-            </div>
-          )}
         </div>
       ) : (
         <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
@@ -700,7 +828,10 @@ const CatalogoGrid = ({
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
-                            src={car.fotos[0]}
+                            src={
+                              car.fotos?.[0] ||
+                              "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000&auto=format&fit=crop"
+                            }
                             alt={car.modelo}
                             className="w-12 h-8 rounded object-cover border border-slate-200 dark:border-slate-700"
                           />
@@ -726,13 +857,9 @@ const CatalogoGrid = ({
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-block px-2.5 py-1 text-[9px] font-black rounded border uppercase tracking-wider ${
-                            car.estadoActual === "Disponible"
-                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                              : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
-                          }`}
+                          className={`inline-block px-2.5 py-1 text-[9px] font-black rounded border uppercase tracking-wider ${car.estadoActual === "DISPONIBLE" || car.estadoActual === "Disponible" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"}`}
                         >
-                          {car.estadoActual}
+                          {car.estadoActual?.replace("_", " ")}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -763,29 +890,63 @@ const CatalogoGrid = ({
   );
 };
 
-// =====================================================================
-// ORQUESTADOR PRINCIPAL
-// =====================================================================
 export default function CatalogoManagerView({ isDarkMode }) {
-  const [vehicles, setVehicles] = useState(mockVehicles);
+  const [vehicles, setVehicles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [currentCar, setCurrentCar] = useState(null);
 
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, vin: null });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingMode, setIsUpdatingMode] = useState(false);
+
+  useEffect(() => {
+    const fetchAutos = async () => {
+      try {
+        const res = await fetch("/api/vehiculos");
+        const data = await res.json();
+        setVehicles(data);
+      } catch (error) {
+        console.error("Error al cargar autos:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAutos();
+  }, []);
 
   const handleEdit = (car) => {
+    const docsFormatted = { auctionSheet: null, jaai: null, bl: null };
+    if (car.documentos && Array.isArray(car.documentos)) {
+      car.documentos.forEach((doc) => {
+        if (doc.tipo === "HOJA_SUBASTA")
+          docsFormatted.auctionSheet = {
+            name: "hoja_subasta.pdf",
+            urlArchivo: doc.urlArchivo,
+          };
+        if (doc.tipo === "JAAI")
+          docsFormatted.jaai = {
+            name: "jaai_certificado.pdf",
+            urlArchivo: doc.urlArchivo,
+          };
+        if (doc.tipo === "BL")
+          docsFormatted.bl = {
+            name: "bill_of_lading.pdf",
+            urlArchivo: doc.urlArchivo,
+          };
+      });
+    }
+
     setCurrentCar({
       ...car,
       marca: car.marca || car.modelo.split(" ")[0] || "Toyota",
       equipamiento: car.equipamiento || [],
       inspectorReport: car.inspectorReport || "",
-      documentos: car.documentos || {
-        auctionSheet: null,
-        jaai: null,
-        bl: null,
-      },
+      documentos: docsFormatted,
+      isUpdatingMode: true,
     });
+    setIsUpdatingMode(true);
     setIsEditing(true);
   };
 
@@ -797,7 +958,7 @@ export default function CatalogoManagerView({ isDarkMode }) {
       modelo: "",
       ano: new Date().getFullYear(),
       precioCNF: "",
-      estadoActual: "Disponible",
+      estadoActual: "DISPONIBLE",
       kilometraje: "",
       combustible: "Gasolina",
       transmision: "Automática",
@@ -811,22 +972,116 @@ export default function CatalogoManagerView({ isDarkMode }) {
         "• Carrocería con pintura original de fábrica en excelentes condiciones.\n• Interior limpio sin quemaduras ni olores.",
       documentos: { auctionSheet: null, jaai: null, bl: null },
       fotos: [],
+      isUpdatingMode: false,
     });
+    setIsUpdatingMode(false);
     setIsEditing(true);
   };
 
-  const handleSaveData = (formValues, completeCarData) => {
-    setIsEditing(false);
-    setCurrentCar(null);
+  // 🌟 LÓGICA DE SUBIDA A SUPABASE
+  const handleSaveData = async (completeCarData, showToast) => {
+    setIsSaving(true);
+    try {
+      if (!supabase) {
+        showToast(
+          "Error: Faltan las variables NEXT_PUBLIC_SUPABASE de entorno.",
+          "error",
+        );
+        setIsSaving(false);
+        return;
+      }
+
+      const docsToUpload = { ...completeCarData.documentos };
+
+      for (const key of ["auctionSheet", "jaai", "bl"]) {
+        const doc = docsToUpload[key];
+
+        if (doc && doc.file) {
+          const fileExt = doc.file.name.split(".").pop();
+          const fileName = `${key}_${completeCarData.vin}_${Date.now()}.${fileExt}`;
+
+          const { data, error } = await supabase.storage
+            .from("jifex-docs")
+            .upload(fileName, doc.file, {
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (error)
+            throw new Error(`No se pudo subir el archivo: ${doc.name}`);
+
+          const { data: publicUrlData } = supabase.storage
+            .from("jifex-docs")
+            .getPublicUrl(fileName);
+
+          docsToUpload[key] = {
+            name: doc.name,
+            urlArchivo: publicUrlData.publicUrl,
+          };
+        }
+      }
+
+      const payloadReadyForDB = {
+        ...completeCarData,
+        documentos: docsToUpload,
+      };
+
+      const method = isUpdatingMode ? "PUT" : "POST";
+
+      const res = await fetch("/api/vehiculos", {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadReadyForDB),
+      });
+
+      if (res.ok) {
+        const autoGuardado = await res.json();
+
+        if (isUpdatingMode) {
+          setVehicles(
+            vehicles.map((v) =>
+              v.vin === autoGuardado.vin ? autoGuardado : v,
+            ),
+          );
+        } else {
+          setVehicles([autoGuardado, ...vehicles]);
+        }
+
+        setIsEditing(false);
+        setCurrentCar(null);
+      } else {
+        showToast(
+          "Error al guardar en BD. Verifica que el VIN no esté repetido.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      showToast(
+        "Error de conexión al subir archivos o guardar datos.",
+        "error",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteClick = (vin) => {
     setDeleteModal({ isOpen: true, vin });
   };
 
-  const confirmDelete = () => {
-    setVehicles(vehicles.filter((v) => v.vin !== deleteModal.vin));
-    setDeleteModal({ isOpen: false, vin: null });
+  const confirmDelete = async () => {
+    try {
+      const res = await fetch(`/api/vehiculos?vin=${deleteModal.vin}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setVehicles(vehicles.filter((v) => v.vin !== deleteModal.vin));
+        setDeleteModal({ isOpen: false, vin: null });
+      }
+    } catch (error) {
+      console.error("Error al borrar el vehículo:", error);
+    }
   };
 
   return (
@@ -838,6 +1093,7 @@ export default function CatalogoManagerView({ isDarkMode }) {
           setCurrentCar={setCurrentCar}
           setIsEditing={setIsEditing}
           onSave={handleSaveData}
+          isSaving={isSaving}
         />
       ) : (
         <CatalogoGrid
@@ -848,6 +1104,7 @@ export default function CatalogoManagerView({ isDarkMode }) {
           handleCreateNew={handleCreateNew}
           handleEdit={handleEdit}
           handleDeleteClick={handleDeleteClick}
+          isLoading={isLoading}
         />
       )}
 

@@ -12,6 +12,7 @@ import {
   CarFront,
   ArrowRight,
   ArrowLeft,
+  Trash2,
 } from "lucide-react";
 
 export default function VehiculoForm({
@@ -46,7 +47,6 @@ export default function VehiculoForm({
     "Asientos de Cuero",
   ];
 
-  // Controlamos los inputs manualmente para poder validar entre pasos
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCurrentCar((prev) => ({ ...prev, [name]: value }));
@@ -62,17 +62,33 @@ export default function VehiculoForm({
     }));
   };
 
+  // 🌟 AHORA ATRAPAMOS EL ARCHIVO ORIGINAL INTACTO PARA ENVIARLO A SUPABASE STORAGE
   const handleFileUpload = (e, docKey) => {
     const file = e.target.files[0];
     if (file) {
       setCurrentCar((prev) => ({
         ...prev,
-        documentos: { ...prev.documentos, [docKey]: file },
+        documentos: {
+          ...prev.documentos,
+          [docKey]: {
+            name: file.name,
+            file: file, // 🌟 Guardamos el archivo crudo, tu orquestador se encargará de subirlo a la nube
+          },
+        },
       }));
     }
   };
 
-  // Navegación del Wizard con validación
+  // 🌟 Función para eliminar un documento que ya estaba subido en el formulario
+  const handleRemoveFile = (e, docKey) => {
+    e.preventDefault();
+    setCurrentCar((prev) => {
+      const nuevosDocumentos = { ...prev.documentos };
+      nuevosDocumentos[docKey] = null;
+      return { ...prev, documentos: nuevosDocumentos };
+    });
+  };
+
   const nextStep = () => {
     setFormError("");
     if (step === 1) {
@@ -109,15 +125,15 @@ export default function VehiculoForm({
 
   const handleSubmit = () => {
     setFormError("");
-    // Como ya validamos en los pasos anteriores, enviamos directamente
-    onSave(currentCar, currentCar);
+    onSave(currentCar, currentCar); // Tu orquestador mostrará los Toasts
   };
 
   const DocumentUploadBtn = ({ title, docKey }) => {
     const file = currentCar.documentos?.[docKey];
+
     return (
-      <label
-        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-colors outline-none active:scale-[0.98] ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 hover:border-slate-500" : "bg-slate-50 border-slate-200 hover:border-slate-300"}`}
+      <div
+        className={`flex items-center justify-between p-3.5 rounded-xl border transition-colors ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700" : "bg-slate-50 border-slate-200"}`}
       >
         <div className="flex items-center gap-3">
           <FileBadge
@@ -126,30 +142,40 @@ export default function VehiculoForm({
           />
           <span className="text-xs font-semibold">{title}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-[10px] font-bold truncate max-w-[120px] ${file ? "text-emerald-500" : "text-slate-400"}`}
-          >
-            {file ? file.name : "Subir PDF"}
-          </span>
-          <Upload
-            size={14}
-            className={file ? "text-emerald-500" : "text-slate-400"}
-          />
-        </div>
-        <input
-          type="file"
-          accept=".pdf, application/pdf"
-          className="hidden"
-          onChange={(e) => handleFileUpload(e, docKey)}
-        />
-      </label>
+
+        {file ? (
+          // Muestra el nombre y botón de borrar
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold truncate max-w-[120px] text-emerald-500">
+              {file.name || "Documento Guardado"}
+            </span>
+            <button
+              onClick={(e) => handleRemoveFile(e, docKey)}
+              className="p-1.5 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors outline-none cursor-pointer"
+              title="Reemplazar archivo"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ) : (
+          // Muestra botón de subir
+          <label className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-amber-500 transition-colors">
+            <span className="text-[10px] font-bold">Subir PDF</span>
+            <Upload size={14} />
+            <input
+              type="file"
+              accept=".pdf, application/pdf"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, docKey)}
+            />
+          </label>
+        )}
+      </div>
     );
   };
 
   return (
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-      {/* HEADER Y BOTÓN CERRAR */}
       <div
         className={`flex items-center justify-between pb-4 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
       >
@@ -171,7 +197,6 @@ export default function VehiculoForm({
         </button>
       </div>
 
-      {/* BARRA DE PROGRESO */}
       <div className="flex items-center gap-2 mb-2">
         <div
           className={`h-2 flex-1 rounded-full transition-colors duration-500 ${step >= 1 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" : isDarkMode ? "bg-slate-800" : "bg-slate-200"}`}
@@ -183,6 +208,7 @@ export default function VehiculoForm({
           className={`h-2 flex-1 rounded-full transition-colors duration-500 ${step >= 3 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" : isDarkMode ? "bg-slate-800" : "bg-slate-200"}`}
         />
       </div>
+
       <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-6">
         <span className={step >= 1 ? "text-amber-500" : ""}>
           1. Datos Principales
@@ -195,7 +221,6 @@ export default function VehiculoForm({
         </span>
       </div>
 
-      {/* BANNER DE ERROR GLOBAL */}
       {formError && (
         <div
           className={`flex items-center gap-3 p-4 rounded-xl border animate-in slide-in-from-top-2 ${isDarkMode ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-red-50 border-red-200 text-red-600"}`}
@@ -207,7 +232,6 @@ export default function VehiculoForm({
         </div>
       )}
 
-      {/* ================= PASO 1: DATOS PRINCIPALES Y FOTOS ================= */}
       {step === 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-right-4 duration-300">
           <div className="lg:col-span-2 space-y-6">
@@ -221,7 +245,6 @@ export default function VehiculoForm({
                 Básica
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* 🌟 AQUÍ SEPARAMOS MARCA Y MODELO */}
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 pl-1">
                     Marca JDM
@@ -262,7 +285,8 @@ export default function VehiculoForm({
                     value={currentCar.vin}
                     onChange={handleChange}
                     placeholder="S321V-987654"
-                    className={`mt-1.5 w-full rounded-xl border py-2.5 px-4 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500/40 ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-amber-500" : "bg-slate-50 border-slate-200 text-amber-600"}`}
+                    disabled={currentCar.isUpdatingMode}
+                    className={`mt-1.5 w-full rounded-xl border py-2.5 px-4 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500/40 ${currentCar.isUpdatingMode ? "opacity-50 cursor-not-allowed" : ""} ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-amber-500" : "bg-slate-50 border-slate-200 text-amber-600"}`}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -289,11 +313,11 @@ export default function VehiculoForm({
                       onChange={handleChange}
                       className={`mt-1.5 w-full rounded-xl border py-2.5 px-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500/40 ${isDarkMode ? "bg-[#0b121f]/50 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                     >
-                      <option value="Disponible">Disponible</option>
-                      <option value="En exportación">En exportación</option>
-                      <option value="Embarcado">Embarcado</option>
-                      <option value="En tránsito">En tránsito</option>
-                      <option value="Entregado">Entregado</option>
+                      <option value="DISPONIBLE">Disponible</option>
+                      <option value="EN_EXPORTACION">En exportación</option>
+                      <option value="EMBARCADO">Embarcado</option>
+                      <option value="EN_TRANSITO">En tránsito</option>
+                      <option value="ENTREGADO">Entregado</option>
                     </select>
                   </div>
                 </div>
@@ -307,7 +331,7 @@ export default function VehiculoForm({
             <h3 className="text-sm font-black uppercase tracking-wider mb-4 flex items-center gap-2 text-amber-500">
               <ImageIcon size={16} /> Galería Visual
             </h3>
-            <div
+            <label
               className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center transition-colors cursor-pointer group ${isDarkMode ? "border-slate-700 hover:border-amber-500 bg-[#0b121f]/50" : "border-slate-300 hover:border-amber-400 bg-slate-50"}`}
             >
               <UploadCloud
@@ -322,12 +346,11 @@ export default function VehiculoForm({
               <p className="text-[10px] text-slate-500 mt-1">
                 Arrastra imágenes JPG/PNG
               </p>
-            </div>
+            </label>
           </div>
         </div>
       )}
 
-      {/* ================= PASO 2: ESPECIFICACIONES TÉCNICAS ================= */}
       {step === 2 && (
         <div
           className={`rounded-3xl border p-6 md:p-8 animate-in slide-in-from-right-4 duration-300 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
@@ -463,7 +486,6 @@ export default function VehiculoForm({
         </div>
       )}
 
-      {/* ================= PASO 3: DOCUMENTOS Y EXTRAS ================= */}
       {step === 3 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-right-4 duration-300">
           <div className="space-y-6">
@@ -535,7 +557,6 @@ export default function VehiculoForm({
         </div>
       )}
 
-      {/* ================= CONTROLES DE NAVEGACIÓN BOTTOM ================= */}
       <div
         className={`pt-6 border-t flex items-center ${step === 1 ? "justify-end" : "justify-between"} ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
       >

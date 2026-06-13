@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Ship,
@@ -12,19 +14,31 @@ import {
   Plus,
   Save,
   CarFront,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Activity, // 🌟 Importado para el icono del nuevo menú
 } from "lucide-react";
-import { mockVehicles } from "@/data/mockVehicles";
 
 export default function TrackingManagerView({ isDarkMode }) {
-  const [vehicles, setVehicles] = useState(mockVehicles);
+  const [vehicles, setVehicles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 🌟 NUEVO ESTADO: Controla si vemos las marcas o los autos de una marca
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [selectedCar, setSelectedCar] = useState(null);
 
-  // Estado del formulario de tracking para el auto seleccionado
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success",
+  });
+
+  // 🌟 AÑADIDO: estadoActual al trackingData para controlarlo dinámicamente
   const [trackingData, setTrackingData] = useState({
+    estadoActual: "DISPONIBLE",
     coordenadas: "",
     velocidad: "",
     tiempoRestante: "",
@@ -43,14 +57,39 @@ export default function TrackingManagerView({ isDarkMode }) {
     evento: "",
   });
 
-  // 1. Filtrado de búsqueda
+  const showToast = (message, type = "success") => {
+    setToast({ visible: true, message, type });
+    setTimeout(
+      () => setToast({ visible: false, message: "", type: "success" }),
+      4000,
+    );
+  };
+
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      try {
+        const res = await fetch("/api/vehiculos");
+        if (res.ok) {
+          const data = await res.json();
+          setVehicles(data);
+        }
+      } catch (error) {
+        console.error("Error al cargar los vehículos de tracking:", error);
+        showToast("Error al cargar los vehículos", "error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVehicles();
+  }, []);
+
   const filteredVehicles = vehicles.filter(
     (car) =>
       car.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       car.vin.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  // 2. Agrupación por marcas
   const groupedVehicles = filteredVehicles.reduce((acc, car) => {
     const brand = car.marca || car.modelo.split(" ")[0] || "Otras Marcas";
     if (!acc[brand]) {
@@ -62,19 +101,30 @@ export default function TrackingManagerView({ isDarkMode }) {
 
   const handleEditTracking = (car) => {
     setSelectedCar(car);
-    setTrackingData({
-      coordenadas:
-        car.estadoActual === "En tránsito" ? "22.41° N, 70.18° E" : "",
-      velocidad: car.estadoActual === "En tránsito" ? "15.4 knots" : "",
-      tiempoRestante: car.estadoActual === "En tránsito" ? "~5 días" : "",
-      nombreBarco: "MV JFX Pioneer III",
-      lineaNaviera: "Ocean Network (ONE)",
-      unidades: "14",
-      puertoDestino: "Karachi Port",
-      eta: "2026-05-30",
-      condiciones: "OK",
-      logs:
-        car.estadoActual === "En tránsito"
+
+    // 🌟 LÓGICA: Leemos de la base de datos o ponemos valores por defecto
+    const estadoReal = car.estadoActual || "DISPONIBLE";
+
+    if (car.tracking) {
+      setTrackingData({
+        ...car.tracking,
+        estadoActual: estadoReal,
+      });
+    } else {
+      const isTransit =
+        estadoReal === "EN_TRANSITO" || estadoReal === "EMBARCADO";
+      setTrackingData({
+        estadoActual: estadoReal,
+        coordenadas: isTransit ? "22.41° N, 70.18° E" : "",
+        velocidad: isTransit ? "15.4 knots" : "",
+        tiempoRestante: isTransit ? "~5 días" : "",
+        nombreBarco: "MV JFX Pioneer III",
+        lineaNaviera: "Ocean Network (ONE)",
+        unidades: "14",
+        puertoDestino: "Karachi Port",
+        eta: "2026-05-30",
+        condiciones: "OK",
+        logs: isTransit
           ? [
               {
                 id: 1,
@@ -90,7 +140,8 @@ export default function TrackingManagerView({ isDarkMode }) {
               },
             ]
           : [],
-    });
+      });
+    }
   };
 
   const handleTrackingChange = (e) => {
@@ -106,14 +157,47 @@ export default function TrackingManagerView({ isDarkMode }) {
     setNewLog({ fechaHora: "", ubicacion: "", evento: "" });
   };
 
-  const handleSaveTracking = () => {
-    alert(
-      "Tracking actualizado correctamente para el chasis " + selectedCar.vin,
-    );
-    setSelectedCar(null);
+  const handleSaveTracking = async () => {
+    setIsSaving(true);
+    try {
+      // 🌟 DINÁMICO: Mandamos a la base de datos el estado que elegiste en el Select
+      const updatePayload = {
+        vin: selectedCar.vin,
+        estadoActual: trackingData.estadoActual,
+        tracking: trackingData,
+      };
+
+      const res = await fetch("/api/vehiculos", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload),
+      });
+
+      if (res.ok) {
+        setVehicles(
+          vehicles.map((v) =>
+            v.vin === selectedCar.vin
+              ? {
+                  ...v,
+                  tracking: trackingData,
+                  estadoActual: trackingData.estadoActual,
+                }
+              : v,
+          ),
+        );
+        showToast("Tracking actualizado correctamente", "success");
+        setSelectedCar(null);
+      } else {
+        showToast("Hubo un error al guardar el tracking", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("Error de conexión con el servidor", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // ================= VISTA 1: EDITOR DE TRACKING =================
   if (selectedCar) {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -143,6 +227,35 @@ export default function TrackingManagerView({ isDarkMode }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* 🌟 NUEVO: SELECTOR DE ESTADO LOGÍSTICO */}
+          <div
+            className={`md:col-span-3 rounded-3xl border p-6 flex flex-col md:flex-row gap-6 items-center justify-between ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-slate-50 border-slate-200"}`}
+          >
+            <div>
+              <h3
+                className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+              >
+                <Activity size={16} className="text-blue-500" /> Estado
+                Logístico Actual
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Modifica la fase en la que se encuentra la importación.
+              </p>
+            </div>
+            <select
+              name="estadoActual"
+              value={trackingData.estadoActual}
+              onChange={handleTrackingChange}
+              className={`w-full md:w-64 rounded-xl border py-3 px-4 text-xs font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "bg-[#0b121f] border-slate-700 text-white" : "bg-white border-slate-300 text-slate-800"}`}
+            >
+              <option value="DISPONIBLE">Disponible</option>
+              <option value="EN_EXPORTACION">En Exportación</option>
+              <option value="EMBARCADO">Embarcado</option>
+              <option value="EN_TRANSITO">En Tránsito</option>
+              <option value="ENTREGADO">Entregado</option>
+            </select>
+          </div>
+
           <div
             className={`rounded-3xl border p-6 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
           >
@@ -427,11 +540,39 @@ export default function TrackingManagerView({ isDarkMode }) {
         <div className="flex justify-end border-t pt-4 mt-6 border-slate-200 dark:border-slate-800">
           <button
             onClick={handleSaveTracking}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] outline-none"
+            disabled={isSaving}
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] outline-none disabled:opacity-70"
           >
-            <Save size={16} /> Publicar Actualización Logística
+            {isSaving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+            {isSaving ? "Guardando..." : "Publicar Actualización Logística"}
           </button>
         </div>
+
+        {toast.visible && (
+          <div
+            className={`fixed bottom-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-300 ${
+              toast.type === "success"
+                ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                : "bg-red-500 text-white shadow-red-500/20"
+            }`}
+          >
+            {toast.type === "success" ? (
+              <CheckCircle2 size={24} />
+            ) : (
+              <AlertCircle size={24} />
+            )}
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/80">
+                {toast.type === "success" ? "¡Éxito!" : "Error"}
+              </p>
+              <p className="text-sm font-bold leading-tight">{toast.message}</p>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -470,8 +611,14 @@ export default function TrackingManagerView({ isDarkMode }) {
         </div>
       </div>
 
-      {!selectedBrand ? (
-        // VISTA 2A: CUADRÍCULA DE MARCAS
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center p-20 space-y-4">
+          <Loader2 size={40} className="text-amber-500 animate-spin" />
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+            Cargando flota de vehículos...
+          </p>
+        </div>
+      ) : !selectedBrand ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in zoom-in-95 duration-300">
           {Object.entries(groupedVehicles).map(([brand, cars]) => (
             <div
@@ -501,8 +648,7 @@ export default function TrackingManagerView({ isDarkMode }) {
           )}
         </div>
       ) : (
-        // VISTA 2B: TABLA DE AUTOS DE LA MARCA
-        <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+        <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 relative pb-10">
           <button
             onClick={() => setSelectedBrand(null)}
             className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-amber-500 transition-colors cursor-pointer outline-none w-fit"
@@ -536,7 +682,10 @@ export default function TrackingManagerView({ isDarkMode }) {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
-                            src={car.fotos[0]}
+                            src={
+                              car.fotos?.[0] ||
+                              "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000&auto=format&fit=crop"
+                            }
                             alt={car.modelo}
                             className="w-12 h-8 rounded object-cover border border-slate-200 dark:border-slate-700"
                           />
@@ -558,14 +707,16 @@ export default function TrackingManagerView({ isDarkMode }) {
                       <td className="px-6 py-4">
                         <span
                           className={`inline-block px-2.5 py-1 text-[9px] font-black rounded border uppercase tracking-wider ${
-                            car.estadoActual === "En tránsito"
+                            (car.estadoActual || "") === "EN_TRANSITO"
                               ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
-                              : car.estadoActual === "Embarcado"
+                              : (car.estadoActual || "") === "EMBARCADO"
                                 ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                : "bg-slate-500/10 text-slate-500 border-slate-500/20"
+                                : (car.estadoActual || "") === "ENTREGADO"
+                                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                  : "bg-slate-500/10 text-slate-500 border-slate-500/20"
                           }`}
                         >
-                          {car.estadoActual}
+                          {(car.estadoActual || "DISPONIBLE").replace("_", " ")}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -582,6 +733,30 @@ export default function TrackingManagerView({ isDarkMode }) {
               </table>
             </div>
           </div>
+
+          {toast.visible && (
+            <div
+              className={`fixed bottom-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-300 ${
+                toast.type === "success"
+                  ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                  : "bg-red-500 text-white shadow-red-500/20"
+              }`}
+            >
+              {toast.type === "success" ? (
+                <CheckCircle2 size={24} />
+              ) : (
+                <AlertCircle size={24} />
+              )}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/80">
+                  {toast.type === "success" ? "¡Éxito!" : "Error"}
+                </p>
+                <p className="text-sm font-bold leading-tight">
+                  {toast.message}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

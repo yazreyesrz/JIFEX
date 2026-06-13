@@ -1,202 +1,205 @@
 import React from "react";
 import Link from "next/link";
 import {
-  Briefcase,
-  ArrowRight,
-  CheckCircle2,
   Ship,
-  Clock,
-  FileText,
-  Calendar,
+  Package,
+  MapPin,
+  CheckCircle2,
+  ArrowRight,
+  Gauge,
 } from "lucide-react";
-import { mockVehicles } from "@/data/mockVehicles";
-import { useTranslation } from "react-i18next";
 
-export default function ComprasView({ isDarkMode, convertPrice }) {
-  const { t } = useTranslation();
+export default function ComprasView({ isDarkMode, convertPrice, vehicles }) {
+  // 🌟 CONFIAMOS AL 100% EN LOS AUTOS ASIGNADOS DESDE LA BD
+  const misAutos = vehicles || [];
 
-  const activePurchases = [mockVehicles[0], mockVehicles[4]];
-  const historyPurchases = mockVehicles.filter(
-    (car) => car.estadoActual === "Entregado",
-  );
+  // 🌟 HELPER ACTUALIZADO A ENUMS DE POSTGRESQL PARA COLORES
+  const getStatusColor = (estado) => {
+    if (!estado)
+      return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+    if (estado === "EN_EXPORTACION")
+      return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+    if (estado === "EMBARCADO")
+      return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+    if (estado === "EN_TRANSITO")
+      return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+    if (estado === "ENTREGADO")
+      return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+    return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+  };
+
+  // 🌟 HELPER ACTUALIZADO PARA LA BARRA DE PROGRESO
+  const getProgressWidth = (estado) => {
+    if (!estado) return "15%";
+    if (estado === "EN_EXPORTACION") return "25%";
+    if (estado === "EMBARCADO") return "50%";
+    if (estado === "EN_TRANSITO") return "75%";
+    if (estado === "ENTREGADO") return "100%";
+    return "15%"; // Progreso inicial seguro para autos recién asignados
+  };
+
+  // Formatear estado para que se vea bonito ("EN_TRANSITO" -> "EN TRANSITO")
+  const formatEstado = (estado) => {
+    if (!estado) return "PROCESANDO";
+    return estado.replace("_", " ");
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* CABECERA */}
       <div
-        className={`border-b pb-4 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+        className={`pb-6 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
       >
-        <h2
-          className={`text-3xl font-black flex items-center gap-2 tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+        <h1
+          className={`text-3xl sm:text-4xl font-black tracking-tight flex items-center gap-3 ${isDarkMode ? "text-white" : "text-slate-900"}`}
         >
-          <Briefcase className="text-amber-500" size={26} /> {t("fleet.title")}
-        </h2>
-        <p className="text-sm text-slate-400 mt-1.5">{t("fleet.subtitle")}</p>
+          <Package className="text-amber-500" size={32} />
+          Mi Flota
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">
+          Control y seguimiento en tiempo real de todos los vehículos que has
+          adquirido.
+        </p>
       </div>
 
-      <div className="space-y-4">
-        <h3
-          className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
+      {/* ESTADO VACÍO */}
+      {misAutos.length === 0 ? (
+        <div
+          className={`p-16 text-center rounded-3xl border border-dashed flex flex-col items-center justify-center ${isDarkMode ? "border-slate-800 bg-[#1e293b]/10" : "border-slate-300 bg-slate-50"}`}
         >
-          <Clock size={16} className="text-blue-500" /> {t("fleet.active")}
-        </h3>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {activePurchases.map((car) => (
+          <Ship size={48} className="text-slate-400 mb-4 opacity-50" />
+          <p
+            className={`text-lg font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
+          >
+            Aún no tienes vehículos en tránsito
+          </p>
+          <p className="text-sm text-slate-500 mt-2 mb-6 max-w-sm mx-auto">
+            Cuando adquieras un vehículo con tu asesor comercial, aparecerá
+            mágicamente aquí con todo su seguimiento logístico.
+          </p>
+          <Link
+            href="/inventario"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                const btn = document.querySelector(
+                  'button[aria-label="Catálogo"]',
+                );
+                if (btn) btn.click();
+              }
+            }}
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs uppercase tracking-wider py-3 px-6 rounded-xl transition-all shadow-md active:scale-95 outline-none"
+          >
+            Ir al Catálogo <ArrowRight size={16} />
+          </Link>
+        </div>
+      ) : (
+        /* LISTADO DE FLOTA */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {misAutos.map((car) => (
             <div
               key={car.vin}
-              className={`rounded-3xl border p-6 flex flex-col sm:flex-row items-center gap-6 shadow-xl transition-all duration-300 hover:shadow-2xl ${isDarkMode ? "border-slate-800/60 bg-[#1e293b]/40 hover:bg-[#1e293b]/60 hover:border-slate-700" : "border-slate-200 bg-white hover:border-slate-300"}`}
+              className={`flex flex-col sm:flex-row rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60 hover:border-slate-600" : "bg-white border-slate-200 hover:border-slate-300"}`}
             >
-              <div className="w-full sm:w-48 h-32 shrink-0">
+              {/* Imagen */}
+              <div className="relative w-full sm:w-2/5 aspect-[4/3] sm:aspect-auto overflow-hidden bg-slate-100 dark:bg-[#0b121f]">
                 <img
-                  src={car.fotos[0]}
+                  src={
+                    car.fotos?.[0] ||
+                    "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000&auto=format&fit=crop"
+                  }
                   alt={car.modelo}
-                  className={`w-full h-full object-cover rounded-2xl border ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+                  className="w-full h-full object-cover"
                 />
-              </div>
-              <div className="flex-1 space-y-3 w-full">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3
-                      className={`text-xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
-                    >
-                      {car.modelo}
-                    </h3>
-                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                      VIN: {car.vin}
-                    </p>
-                  </div>
+                <div className="absolute bottom-3 left-3">
                   <span
-                    className={`px-2.5 py-1 text-[9px] font-black rounded-lg uppercase tracking-wider border ${car.estadoActual === "En tránsito" ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}
+                    className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border backdrop-blur-md shadow-lg ${getStatusColor(car.estadoActual)}`}
                   >
-                    {t(`states.${car.estadoActual}`)}
+                    {formatEstado(car.estadoActual)}
                   </span>
                 </div>
-                <div
-                  className={`grid grid-cols-2 gap-4 pt-3 border-t ${isDarkMode ? "border-slate-800/60 text-slate-400" : "border-slate-100 text-slate-600"}`}
-                >
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider font-bold opacity-70">
-                      {t("fleet.total_cost")}
-                    </p>
-                    <p
-                      className={`font-black text-sm mt-0.5 ${isDarkMode ? "text-white" : "text-slate-800"}`}
-                    >
-                      {convertPrice(car.precioCNF)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider font-bold opacity-70">
-                      {t("fleet.est_arrival")}
-                    </p>
-                    <p
-                      className={`font-black text-sm mt-0.5 flex items-center gap-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}
-                    >
-                      <Calendar size={12} className="text-amber-500" />{" "}
-                      {t("fleet.in_days")} {car.diasParaEntrega}{" "}
-                      {t("fleet.days")}
-                    </p>
-                  </div>
-                </div>
-                <div className="pt-1 flex justify-end">
-                  <Link
-                    href={`/inventario/${car.vin}`}
-                    className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold transition cursor-pointer outline-none active:scale-95 ${isDarkMode ? "bg-amber-500/10 border-amber-500/20 text-amber-500 hover:bg-amber-500 hover:text-black" : "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-500 hover:text-white"}`}
-                  >
-                    {t("fleet.track")} <Ship size={12} />
-                  </Link>
-                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      <div className="space-y-4 pt-4">
-        <h3
-          className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
-        >
-          <CheckCircle2 size={16} className="text-emerald-500" />{" "}
-          {t("fleet.history")}
-        </h3>
-
-        <div className="space-y-3">
-          {historyPurchases.map((car) => (
-            <div
-              key={car.vin}
-              className={`relative overflow-hidden flex flex-col md:flex-row items-center gap-4 p-4 rounded-2xl border transition-all duration-300 ${isDarkMode ? "bg-[#0b121f]/60 border-slate-800/80 hover:bg-[#1e293b]/40" : "bg-slate-50 border-slate-200 hover:bg-white hover:shadow-md"}`}
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500/50"></div>
-              <div className="w-full md:w-28 h-20 shrink-0">
-                <img
-                  src={car.fotos[0]}
-                  alt={car.modelo}
-                  className={`w-full h-full object-cover rounded-xl border ${isDarkMode ? "border-slate-700" : "border-slate-300"}`}
-                />
-              </div>
-              <div className="flex-1 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {/* Contenido */}
+              <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h4
-                    className={`text-lg font-bold tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
-                  >
-                    {car.modelo}
-                  </h4>
-                  <div className="flex items-center gap-3 mt-1">
-                    <p className="text-[10px] font-mono text-slate-500">
-                      VIN: {car.vin}
-                    </p>
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded uppercase">
-                      <CheckCircle2 size={10} />{" "}
-                      {t(`states.${car.estadoActual}`)}
-                    </span>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+                        {car.marca}
+                      </p>
+                      <h3
+                        className={`text-xl font-black leading-tight line-clamp-1 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                      >
+                        {car.modelo}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-mono text-slate-400 mb-4 uppercase tracking-widest">
+                    VIN:{" "}
+                    <span className="font-bold text-amber-500">{car.vin}</span>
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
+                        <Gauge size={12} /> Kms
+                      </p>
+                      <p
+                        className={`text-xs font-semibold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                      >
+                        {car.kilometraje || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
+                        <MapPin size={12} /> Origen
+                      </p>
+                      <p
+                        className={`text-xs font-semibold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                      >
+                        Japón
+                      </p>
+                    </div>
                   </div>
                 </div>
+
+                {/* Mini Barra de Tracking */}
                 <div
-                  className={`flex items-center gap-6 sm:px-6 sm:border-x ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+                  className={`mt-auto pt-5 border-t ${isDarkMode ? "border-slate-800" : "border-slate-100"}`}
                 >
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">
-                      {t("fleet.final_investment")}
+                  <div className="flex justify-between items-end mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      Progreso Logístico
                     </p>
-                    <p
-                      className={`text-sm font-black mt-0.5 ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
-                    >
-                      {convertPrice(car.precioCNF)}
-                    </p>
+                    {car.estadoActual === "ENTREGADO" && (
+                      <CheckCircle2 size={16} className="text-emerald-500" />
+                    )}
                   </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">
-                      {t("fleet.arrival_date")}
-                    </p>
-                    <p
-                      className={`text-sm font-bold mt-0.5 ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
-                    >
-                      Marzo 2026
-                    </p>
-                  </div>
-                </div>
-                <div className="shrink-0 flex justify-end w-full sm:w-auto">
-                  <Link
-                    href={`/inventario/${car.vin}`}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors border outline-none active:scale-95 ${isDarkMode ? "bg-[#1e293b] border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+                  <div
+                    className={`h-2.5 w-full rounded-full overflow-hidden ${isDarkMode ? "bg-slate-800" : "bg-slate-100"}`}
                   >
-                    <FileText size={14} /> {t("fleet.dossier")}
-                  </Link>
+                    <div
+                      className={`h-full transition-all duration-1000 ease-out ${car.estadoActual === "ENTREGADO" ? "bg-emerald-500" : "bg-amber-500"}`}
+                      style={{ width: getProgressWidth(car.estadoActual) }}
+                    />
+                  </div>
+
+                  <div className="mt-5 flex justify-end">
+                    {/* 🌟 AQUÍ ESTÁ EL CAMBIO: AHORA ES UN ENLACE DIRECTO A LOS DETALLES DEL AUTO */}
+                    <Link
+                      href={`/inventario/${car.vin}`}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all active:scale-95 border cursor-pointer ${isDarkMode ? "bg-[#0b121f] border-slate-700 text-slate-300 hover:text-amber-500 hover:border-amber-500" : "bg-slate-50 border-slate-200 text-slate-600 hover:text-amber-600 hover:border-amber-300"}`}
+                    >
+                      Ver Detalles del Auto <ArrowRight size={14} />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
-
-          {historyPurchases.length === 0 && (
-            <div
-              className={`text-center py-12 rounded-2xl border border-dashed ${isDarkMode ? "border-slate-800 text-slate-500" : "border-slate-300 text-slate-400"}`}
-            >
-              <CheckCircle2 size={32} className="mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-bold">{t("fleet.empty_history")}</p>
-              <p className="text-xs mt-1">{t("fleet.empty_desc")}</p>
-            </div>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

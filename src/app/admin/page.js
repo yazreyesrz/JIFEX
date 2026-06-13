@@ -14,7 +14,7 @@ import {
   Users,
   Menu,
   X,
-  ShieldAlert, // 🌟 Importamos el icono para el modal de advertencia
+  ShieldAlert,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -29,12 +29,11 @@ export default function AdminDashboard() {
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // 🌟 ESTADO PARA CONTROLAR EL MODAL DE CERRAR SESIÓN
   const [logoutModal, setLogoutModal] = useState(false);
 
+  // 🌟 CORRECCIÓN 1: Ajustamos la seguridad para leer 'user.rol' en Mayúsculas directo de Supabase
   useEffect(() => {
-    if (!user || user.role !== "admin") {
+    if (!user || user.rol !== "ADMIN") {
       router.push("/");
     }
 
@@ -57,10 +56,9 @@ export default function AdminDashboard() {
     localStorage.setItem("jifex_theme", !isDarkMode ? "dark" : "light");
   };
 
-  // 🌟 FUNCIÓN QUE CONFIRMA Y EJECUTA EL CIERRE DE SESIÓN
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
     setLogoutModal(false);
-    logout();
+    await logout();
   };
 
   const changeView = (view) => {
@@ -68,7 +66,8 @@ export default function AdminDashboard() {
     setIsMobileMenuOpen(false);
   };
 
-  if (!user || user.role !== "admin") return null;
+  // 🌟 CORRECCIÓN 2: Bloqueo de renderizado alineado al rol correcto de la base de datos
+  if (!user || user.rol !== "ADMIN") return null;
 
   return (
     <>
@@ -157,7 +156,8 @@ export default function AdminDashboard() {
               <p
                 className={`text-xs font-black truncate mt-0.5 ${isDarkMode ? "text-white" : "text-slate-800"}`}
               >
-                {user.name}
+                {/* 🌟 CORRECCIÓN 3: Leemos 'nombre' o 'username' de la base de datos real */}
+                {user?.nombre || user?.username}
               </p>
             </div>
 
@@ -170,7 +170,6 @@ export default function AdminDashboard() {
                 {isDarkMode ? "Modo Oscuro" : "Modo Claro"}
               </span>
             </button>
-            {/* 🌟 CAMBIADO ABRIRÁ EL MODAL EN LUGAR DE CERRAR SESIÓN DIRECTAMENTE */}
             <button
               onClick={() => setLogoutModal(true)}
               className={`w-full flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wide rounded-xl border transition-colors outline-none active:scale-95 ${isDarkMode ? "text-red-400 border-red-900/30 bg-red-500/5 hover:bg-red-500/10" : "text-red-600 border-red-200 bg-red-50 hover:bg-red-100"}`}
@@ -190,7 +189,6 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {/* 🌟 MODAL PREMIUM DE CONFIRMACIÓN DE CIERRE DE SESIÓN */}
       {logoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-300">
           <div

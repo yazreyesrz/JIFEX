@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Usaremos PostgreSQL
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. TABLA DE USUARIOS (Clientes y Staff)
+// ==========================================
+model Usuario {
+  id           String      @id @default(uuid())
+  nombre       String
+  username     String      @unique
+  email        String      @unique
+  passwordHash String
+  rol          RolUsuario  @default(CLIENTE) // Roles: ADMIN, MANAGER, CLIENTE
+  telefono     String?
+  direccion    String?
+  
+  // Relaciones
+  vehiculosComprados Vehiculo[]
+  ticketsCreados     Ticket[]
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+enum RolUsuario {
+  ADMIN
+  MANAGER
+  CLIENTE
+}
+
+// ==========================================
+// 2. TABLA DE VEHÍCULOS (El Catálogo y Tracking)
+// ==========================================
+model Vehiculo {
+  vin             String   @id // Vehicle Identification Number
+  idInterno       String?  @unique
+  marca           String
+  modelo          String
+  ano             Int
+  precioCNF       String   // Cost & Freight
+  estadoActual    EstadoLogistico @default(DISPONIBLE)
+  kilometraje     String
+  combustible     String
+  transmision     String
+  traccion        String?
+  colorExterior   String?
+  gradoSubasta    String?  // Grados como 4, 4.5, S
+  pasajeros       String?
+  puertas         String?
+  equipamiento    String[] // Array de strings para las características
+  inspectorReport String?
+  fotos           String[] // Array de URLs de las imágenes
+  
+  // 🌟 NUEVO: Cajón flexible para guardar toda la telemetría, rutas y bitácoras
+  tracking        Json?    
+
+  // Relación: Un auto puede pertenecer a un cliente
+  clienteId       String?
+  cliente         Usuario?  @relation(fields: [clienteId], references: [id])
+
+  // Relación con Documentos
+  documentos      Documento[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum EstadoLogistico {
+  DISPONIBLE        // Verde 
+  EN_EXPORTACION    // Ámbar 
+  EMBARCADO         // Azul 
+  EN_TRANSITO       // Azul profundo 
+  ENTREGADO         // Gris 
+}
+
+// ==========================================
+// 3. TABLA DE DOCUMENTOS (Dossier)
+// ==========================================
+model Documento {
+  id         String   @id @default(uuid())
+  tipo       TipoDoc  // JAAI, BL, HOJA_SUBASTA
+  urlArchivo String
+  
+  vehiculoVin String
+  vehiculo    Vehiculo @relation(fields: [vehiculoVin], references: [vin], onDelete: Cascade)
+  
+  createdAt  DateTime @default(now())
+}
+
+enum TipoDoc {
+  HOJA_SUBASTA
+  JAAI
+  BL
+}
+
+// ==========================================
+// 4. TABLA DE TICKETS (Mesa de Ayuda)
+// ==========================================
+model Ticket {
+  id             String       @id @default(uuid())
+  asunto         String
+  estado         EstadoTicket @default(ABIERTO)
+  
+  // Referencias del auto
+  vinReferencia  String? 
+  vin            String?      // 🌟 NUEVO: Compatibilidad directa con el formulario del frontend
+  
+  // Referencias del cliente (Blindaje de datos)
+  clienteId      String
+  clienteUsuario String?      // 🌟 NUEVO: Guarda el 'username' directo para búsquedas veloces
+  clienteNombre  String?      // 🌟 NUEVO: Guarda el 'nombre' directo para mostrar en el chat
+  cliente        Usuario      @relation(fields: [clienteId], references: [id])
+  
+  mensajes       Mensaje[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum EstadoTicket {
+  ABIERTO
+  RESUELTO
+  CERRADO
+}
+
+model Mensaje {
+  id        String   @id @default(uuid())
+  texto     String
+  remitente String   // "CLIENTE" o "MANAGER"
+  usuarioId String?  // 🌟 NUEVO: Registra el ID exacto de quien envió la respuesta
+  
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+}

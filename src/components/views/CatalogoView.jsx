@@ -1,72 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Search,
-  LayoutGrid,
-  Car,
-  ChevronLeft,
-  ChevronDown,
+  SlidersHorizontal,
+  Heart,
+  CarFront,
+  ArrowUpDown,
+  FilterX,
+  MapPin,
+  Gauge,
 } from "lucide-react";
-import { useTranslation } from "react-i18next"; // 🌟 Importamos el motor de traducción
-import CarGrid from "../shared/CarGrid";
-import { mockVehicles } from "@/data/mockVehicles";
-
-const CustomDropdown = ({ value, options, onChange, isDarkMode }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = options.find((o) => o.value === value) || options[0];
-
-  return (
-    <div className="relative w-full">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-xs font-semibold transition-all outline-none focus:outline-none focus:ring-2 focus:ring-amber-500/40 active:scale-[0.97] cursor-pointer ${
-          isDarkMode
-            ? "bg-[#0b121f] border-slate-800 text-slate-300"
-            : "bg-white border-slate-200 text-slate-700"
-        }`}
-      >
-        <span className="truncate">{selectedOption.label}</span>
-        <ChevronDown
-          size={14}
-          className={`transition-transform duration-300 ${isOpen ? "rotate-180 text-amber-500" : "text-slate-400"}`}
-        />
-      </button>
-
-      {isOpen && (
-        <div
-          className={`absolute z-50 top-full left-0 right-0 mt-2 rounded-xl border shadow-2xl overflow-hidden py-1 ${
-            isDarkMode
-              ? "bg-[#111827] border-slate-800"
-              : "bg-white border-slate-100"
-          }`}
-        >
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value);
-                setIsOpen(false);
-              }}
-              className={`w-full text-left px-4 py-2.5 text-xs transition-colors cursor-pointer ${
-                value === opt.value
-                  ? isDarkMode
-                    ? "bg-amber-500/10 text-amber-500 font-black"
-                    : "bg-amber-50 text-amber-600 font-black"
-                  : isDarkMode
-                    ? "text-slate-300 hover:bg-slate-800/80 hover:text-white"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 export default function CatalogoView({
   isDarkMode,
@@ -75,248 +18,299 @@ export default function CatalogoView({
   favorites,
   toggleFavorite,
   convertPrice,
-  compradoMock,
+  vehicles,
 }) {
-  const { t } = useTranslation(); // 🌟 Inicializamos el hook
+  // 🌟 ESTADOS PARA LOS FILTROS (Sección F2 del Brief)
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Todos");
-  const [yearFilter, setYearFilter] = useState("Todos");
-  const [priceFilter, setPriceFilter] = useState("Todos");
-  const [sortBy, setSortBy] = useState("default");
-  const [isLoading, setIsLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState("Todos");
+  const [filterYear, setFilterYear] = useState("Todos");
+  const [sortBy, setSortBy] = useState("recientes"); // recientes, precio_asc, precio_desc
 
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, [
-    selectedBrand,
-    searchTerm,
-    statusFilter,
-    yearFilter,
-    priceFilter,
-    sortBy,
-  ]);
+  // 🌟 LÓGICA DE FILTRADO Y ORDENAMIENTO DINÁMICO
+  const filteredAndSortedVehicles = useMemo(() => {
+    let result = [...vehicles];
 
-  const availableBrands = [
-    ...new Set(mockVehicles.map((car) => car.modelo.split(" ")[0])),
-  ].filter(
-    (brand) =>
-      brand !== compradoMock.modelo.split(" ")[0] ||
-      mockVehicles.filter(
-        (c) => c.modelo.startsWith(brand) && c.vin !== compradoMock.vin,
-      ).length > 0,
+    // 1. Filtro por Marca (si se seleccionó una desde los íconos principales)
+    if (selectedBrand) {
+      result = result.filter(
+        (v) => v.marca === selectedBrand || v.modelo.includes(selectedBrand),
+      );
+    }
+
+    // 2. Buscador por VIN o Palabra Clave
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (v) =>
+          v.modelo.toLowerCase().includes(term) ||
+          v.vin.toLowerCase().includes(term) ||
+          v.marca.toLowerCase().includes(term),
+      );
+    }
+
+    // 3. Filtro por Estado
+    if (filterStatus !== "Todos") {
+      result = result.filter((v) => v.estadoActual === filterStatus);
+    }
+
+    // 4. Filtro por Año
+    if (filterYear !== "Todos") {
+      result = result.filter((v) => v.ano.toString() === filterYear);
+    }
+
+    // 5. Ordenamiento
+    result.sort((a, b) => {
+      if (sortBy === "recientes") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+
+      // Limpiar el precio (quitar $, USD y comas) para ordenar matemáticamente
+      const precioA = parseInt(a.precioCNF.replace(/[^0-9]/g, "")) || 0;
+      const precioB = parseInt(b.precioCNF.replace(/[^0-9]/g, "")) || 0;
+
+      if (sortBy === "precio_asc") return precioA - precioB;
+      if (sortBy === "precio_desc") return precioB - precioA;
+      return 0;
+    });
+
+    return result;
+  }, [vehicles, selectedBrand, searchTerm, filterStatus, filterYear, sortBy]);
+
+  // Años únicos para el filtro desplegable
+  const uniqueYears = [...new Set(vehicles.map((v) => v.ano))].sort(
+    (a, b) => b - a,
   );
 
-  const brandStyles = {
-    Toyota: { bgLight: "bg-red-50", text: "text-red-600" },
-    Honda: { bgLight: "bg-blue-50", text: "text-blue-600" },
-    Suzuki: { bgLight: "bg-sky-50", text: "text-sky-600" },
-    Daihatsu: { bgLight: "bg-rose-50", text: "text-rose-600" },
-    Nissan: { bgLight: "bg-slate-100", text: "text-slate-600" },
+  // Función para determinar el color del Badge según el estado (Regla del Brief)
+  const getStatusColor = (estado) => {
+    if (!estado) return "";
+    const est = estado.toLowerCase();
+    if (est.includes("disponible"))
+      return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+    if (est.includes("exportación"))
+      return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+    if (est.includes("embarcado"))
+      return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+    if (est.includes("tránsito"))
+      return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+    if (est.includes("entregado"))
+      return "bg-slate-500/10 text-slate-400 border-slate-500/20";
+    return "bg-slate-500/10 text-slate-400 border-slate-500/20";
   };
 
-  const getBrandStyle = (brand) =>
-    brandStyles[brand] || { bgLight: "bg-amber-50", text: "text-amber-600" };
-
-  const filteredVehicles = mockVehicles.filter((car) => {
-    if (car.vin === compradoMock.vin) return false;
-    if (
-      selectedBrand &&
-      !car.modelo.toLowerCase().startsWith(selectedBrand.toLowerCase())
-    )
-      return false;
-
-    const matchesSearch =
-      car.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      car.vin.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "Todos" || car.estadoActual === statusFilter;
-    const matchesYear =
-      yearFilter === "Todos" || car.ano.toString() === yearFilter;
-    const numericPrice = parseInt(car.precioCNF.replace(/[^0-9]/g, ""));
-    const matchesPrice =
-      priceFilter === "Todos" ||
-      (priceFilter === "bajo" && numericPrice < 7000) ||
-      (priceFilter === "alto" && numericPrice >= 7000);
-
-    return matchesSearch && matchesStatus && matchesYear && matchesPrice;
-  });
-
-  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
-    if (sortBy === "cercania")
-      return (a.diasParaEntrega || 0) - (b.diasParaEntrega || 0);
-    const priceA = parseInt(a.precioCNF.replace(/[^0-9]/g, ""));
-    const priceB = parseInt(b.precioCNF.replace(/[^0-9]/g, ""));
-    if (sortBy === "precio-asc") return priceA - priceB;
-    if (sortBy === "precio-desc") return priceB - priceA;
-    if (sortBy === "ano-desc") return b.ano - a.ano;
-    return 0;
-  });
-
-  if (!selectedBrand) {
-    return (
-      <div className="space-y-8">
-        <div
-          className={`border-b pb-4 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
-        >
-          <h2
-            className={`text-3xl font-black flex items-center gap-2 tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* 🌟 CABECERA Y BUSCADOR PRINCIPAL */}
+      <div
+        className={`flex flex-col lg:flex-row justify-between gap-6 pb-6 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+      >
+        <div>
+          <h1
+            className={`text-3xl sm:text-4xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
           >
-            <LayoutGrid className="text-amber-500" size={26} />{" "}
-            {t("catalog.title")}
-          </h2>
-          <p className="text-sm text-slate-400 mt-1.5">
-            {t("catalog.subtitle")}
+            Catálogo de Vehículos
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1.5 font-medium">
+            Explora el inventario disponible y en tránsito hacia Pakistán.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
-          {availableBrands.map((brand) => {
-            const style = getBrandStyle(brand);
-            const count = mockVehicles.filter(
-              (c) => c.modelo.startsWith(brand) && c.vin !== compradoMock.vin,
-            ).length;
+        <div className="relative w-full lg:w-96 shrink-0">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Buscar por modelo, marca o chasis (VIN)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full rounded-2xl border py-3.5 pl-11 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500/40 transition-all shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-200 text-slate-900 placeholder-slate-400"}`}
+          />
+        </div>
+      </div>
+
+      {/* 🌟 BARRA DE FILTROS AVANZADOS (Sección F2) */}
+      <div
+        className={`p-4 rounded-2xl border flex flex-col md:flex-row gap-4 items-center justify-between ${isDarkMode ? "bg-[#1e293b]/20 border-slate-800/60" : "bg-slate-50 border-slate-200"}`}
+      >
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-2 text-slate-400">
+            <SlidersHorizontal size={16} />
+            <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:block">
+              Filtros:
+            </span>
+          </div>
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className={`rounded-xl border py-2 px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-amber-500 transition-colors ${isDarkMode ? "bg-[#0b121f] border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700"}`}
+          >
+            <option value="Todos">Todos los Estados</option>
+            <option value="Disponible">Disponible (Japón)</option>
+            <option value="En exportación">En Exportación</option>
+            <option value="Embarcado">Embarcado</option>
+            <option value="En tránsito">En Tránsito</option>
+          </select>
+
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+            className={`rounded-xl border py-2 px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-amber-500 transition-colors ${isDarkMode ? "bg-[#0b121f] border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700"}`}
+          >
+            <option value="Todos">Cualquier Año</option>
+            {uniqueYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+
+          {(filterStatus !== "Todos" ||
+            filterYear !== "Todos" ||
+            selectedBrand) && (
+            <button
+              onClick={() => {
+                setFilterStatus("Todos");
+                setFilterYear("Todos");
+                setSelectedBrand(null);
+              }}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-500 transition-colors px-2"
+            >
+              <FilterX size={14} /> Limpiar
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <ArrowUpDown size={14} className="text-slate-400" />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className={`rounded-xl border py-2 px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-amber-500 transition-colors ${isDarkMode ? "bg-[#0b121f] border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700"}`}
+          >
+            <option value="recientes">Recién Agregados</option>
+            <option value="precio_asc">Precio: Menor a Mayor</option>
+            <option value="precio_desc">Precio: Mayor a Menor</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 🌟 GRID DE VEHÍCULOS (Tarjetas) */}
+      {filteredAndSortedVehicles.length === 0 ? (
+        <div
+          className={`p-16 text-center rounded-3xl border border-dashed flex flex-col items-center justify-center ${isDarkMode ? "border-slate-800 bg-[#1e293b]/10" : "border-slate-300 bg-slate-50"}`}
+        >
+          <CarFront size={48} className="text-slate-400 mb-4 opacity-50" />
+          <p
+            className={`text-lg font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
+          >
+            No hay vehículos que coincidan
+          </p>
+          <p className="text-sm text-slate-500 mt-2">
+            Intenta ajustar los filtros de búsqueda o limpiar las opciones
+            actuales.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {filteredAndSortedVehicles.map((car) => {
+            const isFav = favorites.includes(car.vin);
             return (
-              <button
-                key={brand}
-                onClick={() => setSelectedBrand(brand)}
-                className={`relative overflow-hidden flex flex-col items-center justify-center p-10 rounded-[2rem] border transition-all duration-500 ease-out group cursor-pointer text-center outline-none focus:outline-none focus:ring-4 focus:ring-amber-500/20 active:scale-[0.98] ${isDarkMode ? `bg-[#1e293b]/30 border-slate-800/60 hover:bg-[#1e293b]/70 hover:border-slate-700` : `bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-2xl hover:-translate-y-1`}`}
+              <div
+                key={car.vin}
+                className={`group flex flex-col rounded-[2rem] border overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 outline-none ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60 hover:border-slate-600" : "bg-white border-slate-200 hover:border-slate-300"}`}
               >
-                <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] group-hover:opacity-[0.04] transition-opacity duration-500 group-hover:scale-110">
-                  <Car size={180} className={style.text} />
+                {/* Imagen y Favorito */}
+                <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0b121f]">
+                  <img
+                    src={
+                      car.fotos?.[0] ||
+                      "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000&auto=format&fit=crop"
+                    }
+                    alt={car.modelo}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleFavorite(car.vin);
+                    }}
+                    className={`absolute top-4 right-4 p-2.5 rounded-full backdrop-blur-md border transition-all active:scale-95 ${isFav ? "bg-red-500/20 border-red-500/30 text-red-500" : "bg-black/20 border-white/10 text-white hover:bg-white/20"}`}
+                  >
+                    <Heart size={18} className={isFav ? "fill-current" : ""} />
+                  </button>
+
+                  <div className="absolute bottom-4 left-4 flex gap-2">
+                    <span
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border backdrop-blur-md shadow-lg ${getStatusColor(car.estadoActual)}`}
+                    >
+                      {car.estadoActual}
+                    </span>
+                  </div>
                 </div>
-                <div
-                  className={`h-16 w-16 mb-6 rounded-2xl flex items-center justify-center shadow-inner transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1.5 ${isDarkMode ? "bg-[#0f172a]" : style.bgLight}`}
-                >
-                  <Car size={28} className={style.text} />
+
+                {/* Contenido de la Tarjeta */}
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                        {car.marca}
+                      </p>
+                      <h3
+                        className={`text-xl font-black leading-tight line-clamp-1 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+                      >
+                        {car.modelo}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-2 mb-6">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Gauge size={14} className="text-amber-500" />
+                      <span className="text-xs font-semibold">
+                        {car.kilometraje}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <MapPin size={14} className="text-blue-500" />
+                      <span className="text-xs font-semibold">
+                        {car.transmision}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`pt-5 mt-auto border-t flex items-center justify-between ${isDarkMode ? "border-slate-800" : "border-slate-100"}`}
+                  >
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+                        Precio Estimado
+                      </p>
+                      <p
+                        className={`text-lg font-black ${isDarkMode ? "text-slate-200" : "text-slate-800"}`}
+                      >
+                        {convertPrice(car.precioCNF)}
+                      </p>
+                    </div>
+
+                    {/* F3: Link hacia la Ficha de Detalle */}
+                    <Link
+                      href={`/inventario/${car.vin}`}
+                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-black uppercase tracking-wider rounded-xl transition-transform active:scale-95 shadow-md shadow-amber-500/20"
+                    >
+                      Ver Detalles
+                    </Link>
+                  </div>
                 </div>
-                <h3
-                  className={`text-2xl font-black tracking-tight mb-2 relative z-10 ${isDarkMode ? "text-white" : "text-slate-900"}`}
-                >
-                  {brand}
-                </h3>
-                <p
-                  className={`text-[10px] font-bold uppercase tracking-widest relative z-10 ${style.text}`}
-                >
-                  {count} {t("catalog.models_count")}
-                </p>
-              </button>
+              </div>
             );
           })}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => setSelectedBrand(null)}
-          className={`p-2.5 rounded-xl border transition-colors cursor-pointer outline-none focus:outline-none focus:ring-2 focus:ring-amber-500/40 active:scale-90 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800 text-slate-400 hover:text-amber-500" : "bg-white border-slate-200 text-slate-600 hover:text-amber-600 shadow-sm"}`}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <div>
-          <h2
-            className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
-          >
-            {selectedBrand}
-          </h2>
-          <p className="text-xs text-slate-400 font-mono uppercase tracking-widest">
-            {t("catalog.available_models")}
-          </p>
-        </div>
-      </div>
-
-      <div
-        className={`relative z-30 backdrop-blur-md p-5 rounded-3xl border transition-colors duration-300 shadow-xl space-y-4 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
-      >
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder={`${t("catalog.search_placeholder")} ${selectedBrand}...`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${isDarkMode ? "border-slate-800 bg-[#0b121f]/60 text-white placeholder-slate-500" : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400"}`}
-            />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <CustomDropdown
-              value={statusFilter}
-              onChange={setStatusFilter}
-              isDarkMode={isDarkMode}
-              options={[
-                { label: t("catalog.filters.all_states"), value: "Todos" },
-                { label: t("catalog.filters.available"), value: "Disponible" },
-                {
-                  label: t("catalog.filters.in_transit"),
-                  value: "En tránsito",
-                },
-              ]}
-            />
-            <CustomDropdown
-              value={yearFilter}
-              onChange={setYearFilter}
-              isDarkMode={isDarkMode}
-              options={[
-                { label: t("catalog.filters.all_years"), value: "Todos" },
-                { label: `${t("catalog.filters.year")} 2022`, value: "2022" },
-                { label: `${t("catalog.filters.year")} 2023`, value: "2023" },
-              ]}
-            />
-            <CustomDropdown
-              value={priceFilter}
-              onChange={setPriceFilter}
-              isDarkMode={isDarkMode}
-              options={[
-                { label: t("catalog.filters.any_price"), value: "Todos" },
-                { label: t("catalog.filters.under_7k"), value: "bajo" },
-                { label: t("catalog.filters.over_7k"), value: "alto" },
-              ]}
-            />
-            <CustomDropdown
-              value={sortBy}
-              onChange={setSortBy}
-              isDarkMode={isDarkMode}
-              options={[
-                { label: t("catalog.filters.sort_default"), value: "default" },
-                { label: t("catalog.filters.sort_near"), value: "cercania" },
-                { label: t("catalog.filters.sort_asc"), value: "precio-asc" },
-                { label: t("catalog.filters.sort_desc"), value: "precio-desc" },
-              ]}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="relative z-10">
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((n) => (
-              <div
-                key={n}
-                className={`h-64 rounded-3xl border p-5 animate-pulse ${isDarkMode ? "border-slate-800 bg-[#1e293b]/20" : "border-slate-200 bg-slate-100"}`}
-              />
-            ))}
-          </div>
-        ) : (
-          <CarGrid
-            vehicles={sortedVehicles}
-            isDarkMode={isDarkMode}
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-            convertPrice={convertPrice}
-            sortBy={sortBy}
-          />
-        )}
-      </div>
-    </>
+      )}
+    </div>
   );
 }

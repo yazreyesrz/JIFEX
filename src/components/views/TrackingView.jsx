@@ -1,273 +1,336 @@
 import React, { useState } from "react";
 import {
-  Ship,
-  Compass,
+  Navigation,
+  Calendar,
+  ArrowLeft,
   MapPin,
   Anchor,
-  Gauge,
-  Hourglass,
-  Calendar,
-  Navigation,
-  ArrowLeft,
+  Compass,
+  Ship,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { mockVehicles } from "@/data/mockVehicles";
 
-export default function TrackingView({ isDarkMode }) {
-  const { t } = useTranslation();
-  // Estado para saber qué vehículo estamos rastreando. Si es null, mostramos la lista.
-  const [selectedVin, setSelectedVin] = useState(null);
+export default function TrackingView({ isDarkMode, vehicles = [] }) {
+  const [selectedCar, setSelectedCar] = useState(null);
 
-  // Filtramos las importaciones activas (igual que en Mi Flota)
-  const activeVehicles = [mockVehicles[0], mockVehicles[4]];
-  const selectedVehicle = activeVehicles.find((v) => v.vin === selectedVin);
+  // 🌟 NO filtramos nada extra aquí, mostramos los que el manager asignó
+  const misAutos = vehicles || [];
 
-  // ================= VISTA 1: LISTA DE SELECCIÓN (ESTILO MY FLEET) =================
-  if (!selectedVehicle) {
+  // 🌟 HELPER ACTUALIZADO A ENUMS DE POSTGRESQL PARA LOS COLORES
+  const getBadgeColor = (estado) => {
+    if (!estado) return "bg-emerald-500/10 text-emerald-500";
+    if (estado === "EN_EXPORTACION") return "bg-indigo-500/10 text-indigo-400";
+    if (estado === "EMBARCADO") return "bg-blue-500/10 text-blue-500";
+    if (estado === "EN_TRANSITO") return "bg-amber-500/10 text-amber-500";
+    if (estado === "ENTREGADO") return "bg-emerald-500/10 text-emerald-500";
+    return "bg-slate-500/10 text-slate-500";
+  };
+
+  const getEstimatedDays = (estado) => {
+    if (!estado) return "25";
+    if (estado === "EN_EXPORTACION") return "22";
+    if (estado === "EMBARCADO") return "15";
+    if (estado === "EN_TRANSITO") return "7";
+    if (estado === "ENTREGADO") return "0";
+    return "25";
+  };
+
+  const getShipPosition = (estado) => {
+    if (!estado) return "15%";
+    if (estado === "EN_EXPORTACION") return "25%";
+    if (estado === "EMBARCADO") return "50%";
+    if (estado === "EN_TRANSITO") return "75%";
+    if (estado === "ENTREGADO") return "100%";
+    return "15%";
+  };
+
+  // 🌟 FUNCIÓN PARA QUE EL TEXTO SEA LEGIBLE ("EN_TRANSITO" -> "EN TRANSITO")
+  const formatEstado = (estado) => {
+    if (!estado) return "DISPONIBLE";
+    return estado.replace("_", " ");
+  };
+
+  if (!selectedCar) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 animate-in fade-in duration-500">
         <div
-          className={`border-b pb-3 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+          className={`pb-6 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
         >
-          <h2
-            className={`text-2xl font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+          <h1
+            className={`text-3xl font-black tracking-tight flex items-center gap-3 ${isDarkMode ? "text-white" : "text-[#0f172a]"}`}
           >
-            <Navigation className="text-blue-500" size={22} />{" "}
-            {t("tracking.select_title")}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {t("tracking.select_subtitle")}
+            <Navigation className="text-blue-500" size={28} />
+            Selecciona un Vehículo
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 font-medium">
+            Elige una de tus importaciones en curso para ver su telemetría.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {activeVehicles.map((car) => (
-            <div
-              key={car.vin}
-              onClick={() => setSelectedVin(car.vin)}
-              className={`group rounded-3xl border p-6 flex flex-col sm:flex-row items-center gap-6 cursor-pointer shadow-xl transition-all duration-300 hover:shadow-2xl outline-none active:scale-[0.98] ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/80 hover:border-blue-500/50 hover:bg-[#1e293b]/70" : "bg-white border-slate-200 hover:border-blue-400 hover:bg-blue-50/30"}`}
+        {misAutos.length === 0 ? (
+          <div
+            className={`p-16 text-center rounded-3xl border border-dashed flex flex-col items-center justify-center ${isDarkMode ? "border-slate-800 bg-[#1e293b]/10" : "border-slate-300 bg-slate-50"}`}
+          >
+            <Ship size={48} className="text-slate-400 mb-4 opacity-50" />
+            <p
+              className={`text-lg font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
             >
-              <div className="w-full sm:w-48 h-32 shrink-0">
-                <img
-                  src={car.fotos[0]}
-                  alt={car.modelo}
-                  className={`w-full h-full object-cover rounded-2xl border ${isDarkMode ? "border-slate-700" : "border-slate-200"}`}
-                />
-              </div>
-              <div className="flex-1 space-y-3 w-full">
-                <div className="flex justify-between items-start">
+              No hay vehículos en tránsito
+            </p>
+            <p className="text-sm text-slate-500 mt-2">
+              Tus vehículos aparecerán aquí una vez que inicie su proceso de
+              exportación.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {misAutos.map((car) => (
+              <div
+                key={car.vin}
+                className={`flex flex-col sm:flex-row rounded-[2rem] border p-4 gap-5 shadow-sm transition-all duration-300 hover:shadow-xl ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
+              >
+                {/* Imagen */}
+                <div className="w-full sm:w-40 h-32 shrink-0 rounded-[1.5rem] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                  <img
+                    src={
+                      car.fotos?.[0] ||
+                      "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000&auto=format&fit=crop"
+                    }
+                    alt={car.modelo}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 flex flex-col justify-between py-1">
                   <div>
-                    <h3
-                      className={`text-xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
-                    >
-                      {car.modelo}
-                    </h3>
-                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                    <div className="flex justify-between items-start">
+                      <h3
+                        className={`text-xl font-black leading-tight ${isDarkMode ? "text-white" : "text-[#0f172a]"}`}
+                      >
+                        {car.modelo}
+                      </h3>
+                      <span
+                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${getBadgeColor(car.estadoActual)}`}
+                      >
+                        {formatEstado(car.estadoActual)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-mono font-bold text-slate-400 mt-1 uppercase tracking-wider">
                       VIN: {car.vin}
                     </p>
                   </div>
-                  <span
-                    className={`px-2.5 py-1 text-[9px] font-black rounded-lg uppercase tracking-wider border ${car.estadoActual === "En tránsito" ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}
-                  >
-                    {t(`states.${car.estadoActual}`, {
-                      defaultValue: car.estadoActual,
-                    })}
-                  </span>
-                </div>
 
-                <div
-                  className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? "border-slate-800/60" : "border-slate-100"}`}
-                >
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider font-bold opacity-70 text-slate-400">
-                      {t("fleet.est_arrival")}
-                    </p>
-                    <p
-                      className={`font-black text-sm mt-0.5 flex items-center gap-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}
+                  <div className="flex items-end justify-between mt-4">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                        Llegada Est.
+                      </p>
+                      <p
+                        className={`text-sm font-black flex items-center gap-1.5 ${isDarkMode ? "text-amber-500" : "text-amber-600"}`}
+                      >
+                        <Calendar size={14} /> En{" "}
+                        {car.tracking?.tiempoRestante ||
+                          `${getEstimatedDays(car.estadoActual)} días`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedCar(car)}
+                      className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 text-xs font-black uppercase tracking-wider transition-colors outline-none active:scale-95 cursor-pointer ${isDarkMode ? "border-amber-500/50 text-amber-500 hover:bg-amber-500 hover:text-slate-900" : "border-amber-400 text-amber-500 hover:bg-amber-50 hover:border-amber-500"}`}
                     >
-                      <Calendar size={12} className="text-amber-500" />{" "}
-                      {t("fleet.in_days")} {car.diasParaEntrega}{" "}
-                      {t("fleet.days")}
-                    </p>
+                      Rastrear <Navigation size={14} />
+                    </button>
                   </div>
-                  <button
-                    className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold transition cursor-pointer outline-none ${isDarkMode ? "bg-amber-500/10 border-amber-500/20 text-amber-500 group-hover:bg-amber-500 group-hover:text-black" : "bg-amber-50 border-amber-200 text-amber-600 group-hover:bg-amber-500 group-hover:text-white"}`}
-                  >
-                    {t("fleet.track")} <Navigation size={12} />
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
-  // ================= VISTA 2: DETALLE DEL TRACKING =================
+  // 🌟 EXTRAEMOS LOS DATOS REALES DE LA BASE DE DATOS
+  const trackData = selectedCar.tracking || {};
+
   return (
-    <div className="space-y-6">
-      {/* HEADER CON BOTÓN DE REGRESO */}
+    <div className="space-y-6 animate-in slide-in-from-right-8 duration-500 pb-10">
       <div
-        className={`border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+        className={`flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-6 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
       >
         <div>
-          <h2
-            className={`text-2xl font-black flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+          <h1
+            className={`text-3xl font-black tracking-tight flex items-center gap-3 ${isDarkMode ? "text-white" : "text-[#0f172a]"}`}
           >
-            <Ship className="text-amber-500" size={22} /> {t("tracking.title")}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {t("tracking.subtitle")}
+            <Ship className="text-amber-500" size={28} />
+            Posicionamiento Logístico
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 font-medium">
+            Ubicación de buques de carga en alta mar.
           </p>
         </div>
         <button
-          onClick={() => setSelectedVin(null)}
-          className={`inline-flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors border outline-none active:scale-95 ${isDarkMode ? "bg-[#1e293b]/60 border-slate-700 text-slate-300 hover:bg-[#1e293b] hover:text-white hover:border-slate-500" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"}`}
+          onClick={() => setSelectedCar(null)}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full border text-xs font-bold uppercase tracking-wider transition-colors outline-none active:scale-95 cursor-pointer ${isDarkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
         >
-          <ArrowLeft size={14} /> {t("tracking.back_btn")}
+          <ArrowLeft size={16} /> Volver a la Lista
         </button>
       </div>
 
       <div
-        className={`rounded-2xl border p-6 space-y-4 shadow-xl ${isDarkMode ? "border-slate-800 bg-[#1e293b]/40" : "border-slate-200 bg-white"}`}
+        className={`rounded-3xl border p-8 shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
       >
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <Compass size={14} className="text-amber-500" />{" "}
-          {t("tracking.coordinates")}: {selectedVehicle.modelo}
-        </h3>
-        <div
-          className={`relative h-28 w-full rounded-xl border overflow-hidden flex items-center justify-between px-10 sm:px-16 transition-colors ${isDarkMode ? "bg-[#0b121f]/80 border-slate-800" : "bg-slate-50 border-slate-200"}`}
-        >
-          <div className="absolute left-24 right-24 border-t border-dashed border-slate-300/40 top-1/2 -translate-y-1/2 z-0" />
-          <div className="absolute left-24 w-[55%] border-t-2 border-amber-500 top-1/2 -translate-y-1/2 z-0 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse" />
+        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-8 flex items-center gap-2">
+          <Compass size={14} /> Coordenadas Estimadas: {selectedCar.modelo}
+        </p>
+
+        <div className="relative px-4 sm:px-12 py-4">
+          <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-300 dark:border-slate-700" />
+
           <div
-            className={`relative z-10 flex flex-col items-center space-y-1 p-2 rounded-lg border ${isDarkMode ? "bg-[#0b121f] border-slate-800" : "bg-white border-slate-200"}`}
-          >
-            <MapPin size={15} className="text-slate-400" />
-            <span
-              className={`text-[10px] font-bold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+            className="absolute left-10 top-1/2 -translate-y-1/2 border-t-2 border-amber-400 transition-all duration-1000 ease-out"
+            style={{
+              width: `calc(${getShipPosition(selectedCar.estadoActual)} - 2.5rem)`,
+            }}
+          />
+
+          <div className="flex justify-between items-center relative z-10">
+            <div
+              className={`flex flex-col items-center p-3 rounded-2xl border ${isDarkMode ? "bg-[#0b121f] border-slate-800" : "bg-white border-slate-200"}`}
             >
-              {t("tracking.japan")}
-            </span>
-          </div>
-          <div
-            className={`relative z-10 flex flex-col items-center border p-2.5 rounded-xl animate-bounce shadow-md ${isDarkMode ? "bg-[#1e293b] border-slate-700/60" : "bg-white border-slate-200"}`}
-          >
-            <Ship size={18} className="text-amber-400" />
-            <span className="text-[8px] font-bold text-amber-400 mt-1 uppercase tracking-wider">
-              {t("tracking.in_transit")}
-            </span>
-          </div>
-          <div
-            className={`relative z-10 flex flex-col items-center space-y-1 p-2 rounded-lg border ${isDarkMode ? "bg-[#0b121f] border-slate-800" : "bg-white border-slate-200"}`}
-          >
-            <Anchor size={15} className="text-slate-400" />
-            <span
-              className={`text-[10px] font-bold ${isDarkMode ? "text-slate-400" : "text-slate-700"}`}
+              <MapPin size={20} className="text-slate-400 mb-1" />
+              <span
+                className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
+              >
+                Japón
+              </span>
+            </div>
+
+            <div
+              className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out flex flex-col items-center"
+              style={{
+                left: getShipPosition(selectedCar.estadoActual),
+                transform: "translateX(-50%)",
+              }}
             >
-              {t("tracking.pakistan")}
-            </span>
+              <div className="bg-white dark:bg-[#1e293b] border border-amber-400 rounded-2xl p-3 shadow-lg flex flex-col items-center justify-center animate-bounce">
+                <Ship size={24} className="text-amber-500 mb-1" />
+                <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest whitespace-nowrap">
+                  {formatEstado(selectedCar.estadoActual)}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={`flex flex-col items-center p-3 rounded-2xl border ${isDarkMode ? "bg-[#0b121f] border-slate-800" : "bg-white border-slate-200"}`}
+            >
+              <Anchor size={20} className="text-slate-400 mb-1" />
+              <span
+                className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? "text-slate-300" : "text-slate-700"}`}
+              >
+                Pakistán
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div
-          className={`rounded-2xl border p-5 space-y-3 shadow-md ${isDarkMode ? "border-slate-800/80 bg-[#1e293b]/30" : "bg-white border-slate-200"}`}
+          className={`rounded-3xl border p-6 shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
         >
-          <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-            <Compass size={14} className="text-amber-500" />{" "}
-            {t("tracking.telemetry")}
-          </h4>
-          <div className="space-y-2 pt-1 text-xs">
-            <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
-              <span className="text-slate-400">{t("tracking.coords")}</span>
-              <span className="font-mono font-bold text-amber-500">
-                22.41° N, 70.18° E
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-5 flex items-center gap-2">
+            <Compass size={14} /> Telemetría de Ruta
+          </p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+              <span className="text-xs text-slate-500">Coordenadas:</span>
+              <span
+                className={`text-xs font-bold font-mono ${isDarkMode ? "text-white" : "text-slate-800"}`}
+              >
+                {trackData.coordenadas || "N/A"}
               </span>
             </div>
-            <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
-              <span className="text-slate-400">{t("tracking.speed")}</span>
-              <span className="font-bold flex items-center gap-1">
-                <Gauge size={12} className="text-slate-400" /> 15.4 knots
+            <div className="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+              <span className="text-xs text-slate-500">Velocidad:</span>
+              <span
+                className={`text-xs font-bold font-mono flex items-center gap-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}
+              >
+                <Clock size={12} /> {trackData.velocidad || "N/A"}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">{t("tracking.time_left")}</span>
-              <span className="font-bold flex items-center gap-1">
-                <Hourglass size={12} className="text-slate-400" /> ~5{" "}
-                {t("fleet.days")}
+            <div className="flex justify-between items-center pb-1">
+              <span className="text-xs text-slate-500">Tiempo Restante:</span>
+              <span
+                className={`text-xs font-bold font-mono flex items-center gap-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}
+              >
+                {trackData.tiempoRestante ||
+                  `~${getEstimatedDays(selectedCar.estadoActual)} días`}
               </span>
             </div>
           </div>
         </div>
+
         <div
-          className={`rounded-2xl border p-5 space-y-3 shadow-md ${isDarkMode ? "border-slate-800/80 bg-[#1e293b]/30" : "bg-white border-slate-200"}`}
+          className={`rounded-3xl border p-6 shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
         >
-          <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-            <Ship size={14} className="text-amber-500" />{" "}
-            {t("tracking.vessel_data")}
-          </h4>
-          <div className="space-y-2 pt-1 text-xs">
-            <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
-              <span className="text-slate-400">
-                {t("tracking.vessel_name")}
-              </span>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-5 flex items-center gap-2">
+            <Ship size={14} /> Datos del Buque
+          </p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+              <span className="text-xs text-slate-500">Nombre Oficial:</span>
               <span
-                className={`font-bold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-slate-800"}`}
               >
-                MV JFX Pioneer III
+                {trackData.nombreBarco || "No Asignado"}
               </span>
             </div>
-            <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
-              <span className="text-slate-400">
-                {t("tracking.shipping_line")}
-              </span>
+            <div className="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+              <span className="text-xs text-slate-500">Línea Naviera:</span>
               <span
-                className={`font-bold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-slate-800"}`}
               >
-                Ocean Network (ONE)
+                {trackData.lineaNaviera || "No Asignada"}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">
-                {t("tracking.fleet_units")}
+            <div className="flex justify-between items-center pb-1">
+              <span className="text-xs text-slate-500">Unidades de Flota:</span>
+              <span className="text-xs font-black text-amber-500">
+                {trackData.unidades || "-"}
               </span>
-              <span className="font-bold text-amber-500">14</span>
             </div>
           </div>
         </div>
+
         <div
-          className={`rounded-2xl border p-5 space-y-3 shadow-md ${isDarkMode ? "border-slate-800/80 bg-[#1e293b]/30" : "bg-white border-slate-200"}`}
+          className={`rounded-3xl border p-6 shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
         >
-          <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
-            <Anchor size={14} className="text-amber-500" />{" "}
-            {t("tracking.destination")}
-          </h4>
-          <div className="space-y-2 pt-1 text-xs">
-            <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
-              <span className="text-slate-400">
-                {t("tracking.port_arrival")}
-              </span>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-5 flex items-center gap-2">
+            <Anchor size={14} /> Puerto de Destino
+          </p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+              <span className="text-xs text-slate-500">Puerto de Arribo:</span>
               <span
-                className={`font-bold ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-slate-800"}`}
               >
-                Karachi Port
+                {trackData.puertoDestino || "No Asignado"}
               </span>
             </div>
-            <div className="flex justify-between border-b border-slate-800/40 pb-1.5">
-              <span className="text-slate-400">{t("tracking.eta")}</span>
+            <div className="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+              <span className="text-xs text-slate-500">ETA Oficial:</span>
               <span
-                className={`font-bold flex items-center gap-1 ${isDarkMode ? "text-slate-200" : "text-slate-700"}`}
+                className={`text-xs font-bold font-mono flex items-center gap-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}
               >
-                <Calendar size={12} className="text-slate-400" /> 30/05/2026
+                <Calendar size={12} /> {trackData.eta || "Por Confirmar"}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">{t("tracking.conditions")}</span>
-              <span className="font-bold text-emerald-500 flex items-center gap-1">
-                OK
+            <div className="flex justify-between items-center pb-1">
+              <span className="text-xs text-slate-500">Condiciones:</span>
+              <span className="text-xs font-black text-emerald-500">
+                {trackData.condiciones || "Pendiente"}
               </span>
             </div>
           </div>
@@ -275,43 +338,62 @@ export default function TrackingView({ isDarkMode }) {
       </div>
 
       <div
-        className={`rounded-2xl border p-6 space-y-4 shadow-xl overflow-hidden ${isDarkMode ? "border-slate-800 bg-[#1e293b]/40" : "bg-white border-slate-200"}`}
+        className={`rounded-3xl border overflow-hidden shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
       >
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-          {t("tracking.log")}
-        </h3>
+        <div
+          className={`px-6 py-4 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500">
+            Registro de Movimiento Global
+          </p>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs whitespace-nowrap min-w-full">
-            <thead>
-              <tr
-                className={`border-b font-bold text-slate-400 ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
-              >
-                <th className="pb-3 px-2 font-mono">
-                  {t("tracking.date_time")}
-                </th>
-                <th className="pb-3 px-2">{t("tracking.location")}</th>
-                <th className="pb-3 px-2">{t("tracking.event")}</th>
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead
+              className={`text-[10px] uppercase tracking-widest font-bold ${isDarkMode ? "text-slate-500 border-slate-800 bg-[#0b121f]/50" : "text-slate-400 border-slate-200 bg-slate-50"} border-b`}
+            >
+              <tr>
+                <th className="px-6 py-4">Fecha / Hora</th>
+                <th className="px-6 py-4">Ubicación</th>
+                <th className="px-6 py-4">Evento Logístico</th>
               </tr>
             </thead>
             <tbody
-              className={`font-medium divide-y ${isDarkMode ? "divide-slate-800/50 text-slate-300" : "divide-slate-200 text-slate-700"}`}
+              className={`divide-y ${isDarkMode ? "divide-slate-800/60" : "divide-slate-100"}`}
             >
-              <tr>
-                <td className="py-3 px-2 font-mono text-[11px] text-slate-500">
-                  25/05/2026 09:30
-                </td>
-                <td className="py-3 px-2 font-semibold text-slate-400">
-                  Mar de Arabia
-                </td>
-                <td className="py-3 px-2 text-amber-500">Control OK</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-2 font-mono text-[11px] text-slate-500">
-                  18/05/2026 14:00
-                </td>
-                <td className="py-3 px-2 text-slate-400">Singapore Port</td>
-                <td className="py-3 px-2 text-slate-400">Zarpado (Departed)</td>
-              </tr>
+              {trackData.logs?.length > 0 ? (
+                trackData.logs.map((log) => (
+                  <tr
+                    key={log.id}
+                    className={`transition-colors hover:${isDarkMode ? "bg-[#1e293b]/60" : "bg-slate-50/80"}`}
+                  >
+                    <td
+                      className={`px-6 py-4 font-mono text-xs ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}
+                    >
+                      {log.fechaHora}
+                    </td>
+                    <td
+                      className={`px-6 py-4 font-bold text-xs ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}
+                    >
+                      {log.ubicacion}
+                    </td>
+                    <td
+                      className={`px-6 py-4 font-bold text-xs ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}
+                    >
+                      {log.evento}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan="3"
+                    className="px-6 py-8 text-center text-xs font-bold uppercase tracking-wider text-slate-400"
+                  >
+                    Aún no hay registros en la bitácora logística
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

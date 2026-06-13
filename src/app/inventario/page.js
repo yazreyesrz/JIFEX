@@ -10,11 +10,12 @@ import {
   ShieldAlert,
   Globe,
   Clock,
+  Loader2,
 } from "lucide-react";
-import { mockVehicles } from "@/data/mockVehicles";
 
 import "@/i18n/config";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/context/AuthContext";
 
 import CatalogoView from "@/components/views/CatalogoView";
 import FavoritosView from "@/components/views/FavoritosView";
@@ -136,6 +137,11 @@ const LanguageDropdown = ({ isDarkMode }) => {
 export default function InventarioPage() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const { logout, user } = useAuth();
+
+  const [vehicles, setVehicles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [currentView, setCurrentView] = useState("inventario");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState(null);
@@ -150,6 +156,27 @@ export default function InventarioPage() {
   const [logoutModal, setLogoutModal] = useState(false);
 
   useEffect(() => {
+    const fetchVehicles = async () => {
+      try {
+        const res = await fetch("/api/vehiculos");
+        if (res.ok) {
+          const data = await res.json();
+          setVehicles(data);
+        }
+      } catch (error) {
+        console.error("Error al conectar con la base de datos:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchVehicles();
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.rol !== "CLIENTE") {
+      router.push("/");
+    }
+
     const savedTheme = localStorage.getItem("jifex_theme");
     if (savedTheme === "dark") setIsDarkMode(true);
     else if (savedTheme === "light") setIsDarkMode(false);
@@ -159,23 +186,21 @@ export default function InventarioPage() {
     if (savedCurrency) setCurrency(savedCurrency);
 
     const savedLanguage = localStorage.getItem("jifex_language");
-    if (savedLanguage) {
-      i18n.changeLanguage(savedLanguage);
-    } else {
-      i18n.changeLanguage("en");
-    }
+    if (savedLanguage) i18n.changeLanguage(savedLanguage);
+    else i18n.changeLanguage("en");
 
     const targetView = localStorage.getItem("jifex_target_view");
     if (targetView) {
       setCurrentView(targetView);
       localStorage.removeItem("jifex_target_view");
     }
-  }, [i18n]);
+  }, [i18n, user, router]);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
     localStorage.setItem("jifex_theme", !isDarkMode ? "dark" : "light");
   };
+
   const toggleFavorite = (vin) => {
     const newFavs = favorites.includes(vin)
       ? favorites.filter((id) => id !== vin)
@@ -184,10 +209,9 @@ export default function InventarioPage() {
     localStorage.setItem("jifex_favorites", JSON.stringify(newFavs));
   };
 
-  // 🌟 AHORA ESTA FUNCIÓN LEE LA CONFIGURACIÓN DEL MANAGER EN TIEMPO REAL
   const convertPrice = (priceUSDStr) => {
+    if (!priceUSDStr) return "";
     const numericPrice = parseInt(priceUSDStr.replace(/[^0-9]/g, ""));
-
     if (currency === "PKR") {
       const livePKR = parseFloat(
         localStorage.getItem("jifex_rate_pkr") || "285",
@@ -214,6 +238,15 @@ export default function InventarioPage() {
     </div>
   );
 
+  // 🌟 FILTROS INTELIGENTES (LA MAGIA OCURRE AQUÍ)
+  // 1. Vehículos sin dueño (Para mostrar en el Catálogo)
+  const vehiculosDisponibles = vehicles.filter((car) => !car.clienteId);
+
+  // 2. Mis Vehículos comprados (Para mostrar en Mi Flota y Tracking)
+  const misVehiculos = vehicles.filter((car) => car.clienteId === user?.id);
+
+  if (!user || user.rol !== "CLIENTE") return null;
+
   return (
     <div
       className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${isDarkMode ? "bg-[#0b121f] text-[#f1f5f9]" : "bg-slate-50 text-[#0f172a]"}`}
@@ -239,42 +272,60 @@ export default function InventarioPage() {
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6 w-full">
-          {currentView === "inventario" && (
-            <CatalogoView
-              isDarkMode={isDarkMode}
-              selectedBrand={selectedBrand}
-              setSelectedBrand={setSelectedBrand}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-              convertPrice={convertPrice}
-              compradoMock={mockVehicles[0]}
-            />
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4">
+              <Loader2 size={40} className="text-amber-500 animate-spin" />
+              <p className="text-sm font-bold uppercase tracking-widest text-slate-500">
+                Sincronizando inventario con la nube...
+              </p>
+            </div>
+          ) : (
+            <>
+              {currentView === "inventario" && (
+                <CatalogoView
+                  isDarkMode={isDarkMode}
+                  selectedBrand={selectedBrand}
+                  setSelectedBrand={setSelectedBrand}
+                  favorites={favorites}
+                  toggleFavorite={toggleFavorite}
+                  convertPrice={convertPrice}
+                  vehicles={
+                    vehiculosDisponibles
+                  } /* 🌟 Se le pasa el catálogo público */
+                />
+              )}
+              {currentView === "favoritos" && (
+                <FavoritosView
+                  isDarkMode={isDarkMode}
+                  favorites={favorites}
+                  toggleFavorite={toggleFavorite}
+                  convertPrice={convertPrice}
+                  setCurrentView={setCurrentView}
+                  vehicles={vehiculosDisponibles}
+                />
+              )}
+              {currentView === "compras" && (
+                <ComprasView
+                  isDarkMode={isDarkMode}
+                  convertPrice={convertPrice}
+                  vehicles={misVehiculos} /* 🌟 Se le pasan SOLO mis autos */
+                />
+              )}
+              {currentView === "tracking" && (
+                <TrackingView
+                  isDarkMode={isDarkMode}
+                  vehicles={misVehiculos} /* 🌟 Se le pasan SOLO mis autos */
+                />
+              )}
+              {currentView === "soporte" && (
+                <SoporteView isDarkMode={isDarkMode} />
+              )}
+            </>
           )}
-          {currentView === "favoritos" && (
-            <FavoritosView
-              isDarkMode={isDarkMode}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-              convertPrice={convertPrice}
-              setCurrentView={setCurrentView}
-              compradoMock={mockVehicles[0]}
-            />
-          )}
-          {currentView === "compras" && (
-            <ComprasView
-              isDarkMode={isDarkMode}
-              compradoMock={mockVehicles[0]}
-              convertPrice={convertPrice}
-            />
-          )}
-          {currentView === "tracking" && (
-            <TrackingView isDarkMode={isDarkMode} />
-          )}
-          {currentView === "soporte" && <SoporteView isDarkMode={isDarkMode} />}
         </main>
       </div>
 
-      {/* MODALES TRADUCIDOS */}
+      {/* MODALES */}
       {alertModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity duration-300">
           <div
@@ -346,9 +397,9 @@ export default function InventarioPage() {
                 {t("modals.cancel")}
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setLogoutModal(false);
-                  router.push("/");
+                  await logout();
                 }}
                 className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold py-3 text-xs uppercase tracking-wider transition cursor-pointer shadow-lg active:scale-95"
               >
