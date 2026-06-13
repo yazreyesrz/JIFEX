@@ -15,11 +15,13 @@ import {
   Menu,
   X,
   ShieldAlert,
+  LineChart, // 🌟 Agregado solo el ícono para el nuevo botón
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import DashboardAdminView from "@/components/views/admin/DashboardAdminView";
 import ClientesAdminView from "@/components/views/admin/ClientesAdminView";
+import KpisAdminView from "@/components/views/admin/KpisAdminView"; // 🌟 Agregada tu nueva vista
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -137,6 +139,15 @@ export default function AdminDashboard() {
               >
                 <BarChart4 size={18} /> Analíticas
               </button>
+
+              {/* 🌟 NUEVO BOTÓN AGREGADO CON TUS MISMAS CLASES ORIGINALES */}
+              <button
+                onClick={() => changeView("kpis")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-150 uppercase tracking-wider outline-none active:scale-[0.97] ${currentView === "kpis" ? "bg-indigo-500/10 text-indigo-500 border-l-4 border-indigo-500" : isDarkMode ? "text-slate-400 hover:bg-[#1e293b]/50 hover:text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <LineChart size={18} /> Métricas y KPIs
+              </button>
+
               <button
                 onClick={() => changeView("clientes")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-150 uppercase tracking-wider outline-none active:scale-[0.97] ${currentView === "clientes" ? "bg-indigo-500/10 text-indigo-500 border-l-4 border-indigo-500" : isDarkMode ? "text-slate-400 hover:bg-[#1e293b]/50 hover:text-white" : "text-slate-600 hover:bg-slate-100"}`}
@@ -183,6 +194,8 @@ export default function AdminDashboard() {
           {currentView === "dashboard" && (
             <DashboardAdminView isDarkMode={isDarkMode} />
           )}
+          {/* 🌟 VISTA NUEVA AGREGADA A LA PANTALLA PRINCIPAL */}
+          {currentView === "kpis" && <KpisAdminView isDarkMode={isDarkMode} />}
           {currentView === "clientes" && (
             <ClientesAdminView isDarkMode={isDarkMode} />
           )}

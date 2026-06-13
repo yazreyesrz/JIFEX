@@ -1,244 +1,276 @@
 "use client";
-import React from "react";
+
+import React, { useState, useEffect } from "react";
 import {
-  TrendingUp,
   Users,
   Car,
   Ship,
-  DollarSign,
   Activity,
-  ArrowUpRight,
-  ArrowDownRight,
   BarChart3,
   PieChart,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
+// Importamos los componentes de Recharts
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 export default function DashboardAdminView({ isDarkMode }) {
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Colores dinámicos para las gráficas
+  const COLORS = ["#f59e0b", "#10b981", "#3b82f6", "#6366f1", "#8b5cf6"];
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const res = await fetch("/api/admin/dashboard");
+        if (res.ok) {
+          const json = await res.json();
+          setData(json);
+        }
+      } catch (error) {
+        console.error("Error obteniendo data del dashboard", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
+        <Loader2 size={48} className="text-amber-500 animate-spin mb-4" />
+        <p className="text-sm font-bold uppercase tracking-widest text-slate-500">
+          Cargando métricas...
+        </p>
+      </div>
+    );
+  }
+
+  // 1. Mapeo de KPIs Dinámicos
   const stats = [
     {
-      title: "Ingresos Totales (Mes)",
-      value: "$142,500 USD",
-      trend: "+12.5%",
-      isUp: true,
-      icon: DollarSign,
+      title: "Clientes Activos",
+      value: data?.kpis?.totalClientes || 0,
+      trend: "Usuarios",
+      icon: Users,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
     },
     {
       title: "Vehículos en Catálogo",
-      value: "84 Unidades",
-      trend: "-2.4%",
-      isUp: false,
+      value: data?.kpis?.totalVehiculos || 0,
+      trend: "Unidades totales",
       icon: Car,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },
     {
       title: "Unidades en Tránsito",
-      value: "32 Flotas",
-      trend: "+18.2%",
-      isUp: true,
+      value: data?.kpis?.vehiculosEnTransito || 0,
+      trend: "En alta mar",
       icon: Ship,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
     },
     {
-      title: "Clientes Activos B2B",
-      value: "15 Empresas",
-      trend: "+5.0%",
-      isUp: true,
-      icon: Users,
+      title: "Unidades Entregadas",
+      value: data?.kpis?.vehiculosEntregados || 0,
+      trend: "Histórico",
+      icon: CheckCircle,
       color: "text-indigo-500",
       bg: "bg-indigo-500/10",
     },
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
-      {/* CABECERA RESPONSIVE */}
-      <div
-        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b ${isDarkMode ? "border-slate-800" : "border-slate-200"}`}
-      >
-        <div>
-          <h1
-            className={`text-2xl sm:text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
-          >
-            Resumen Ejecutivo
-          </h1>
-          <p className="text-[10px] sm:text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">
-            Métricas y rendimiento global de JIFEX
-          </p>
-        </div>
-        <div
-          className={`px-4 py-2 rounded-xl border text-xs font-bold flex items-center justify-center sm:justify-start gap-2 w-full sm:w-auto ${isDarkMode ? "bg-[#1e293b]/50 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-600"}`}
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="mb-8">
+        <h1
+          className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
         >
-          <Activity size={14} className="text-emerald-500 animate-pulse" />
-          Datos en Tiempo Real
-        </div>
+          Visión General
+        </h1>
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">
+          Métricas de importación en tiempo real
+        </p>
       </div>
 
-      {/* TARJETAS DE KPIs RESPONSIVES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {stats.map((stat, idx) => (
+      {/* 🌟 SECCIÓN DE KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => (
           <div
-            key={idx}
-            className={`rounded-2xl sm:rounded-3xl border p-4 sm:p-6 transition-transform hover:-translate-y-1 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200 shadow-xl shadow-slate-200/50"}`}
+            key={index}
+            className={`p-6 rounded-3xl border transition-all hover:-translate-y-1 hover:shadow-xl ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
           >
-            <div className="flex items-start justify-between mb-3 sm:mb-4">
-              <div
-                className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center ${stat.bg} ${stat.color}`}
-              >
-                <stat.icon size={20} className="sm:w-6 sm:h-6" />
-              </div>
-              <div
-                className={`flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg ${stat.isUp ? (isDarkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600") : isDarkMode ? "bg-red-500/10 text-red-400" : "bg-red-50 text-red-600"}`}
-              >
-                {stat.isUp ? (
-                  <ArrowUpRight size={12} />
-                ) : (
-                  <ArrowDownRight size={12} />
-                )}
-                {stat.trend}
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color}`}>
+                <stat.icon size={24} />
               </div>
             </div>
             <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                {stat.title}
+              </p>
               <h3
-                className={`text-xl sm:text-2xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-800"}`}
+                className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}
               >
                 {stat.value}
               </h3>
-              <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 mt-1">
-                {stat.title}
-              </p>
+              <div className="flex items-center gap-1 mt-2">
+                <span className="text-xs font-bold text-slate-500">
+                  {stat.trend}
+                </span>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* SECCIÓN DE GRÁFICAS RESPONSIVES */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      {/* 🌟 SECCIÓN DE GRÁFICAS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* GRÁFICA DE BARRAS: TOP MARCAS */}
         <div
-          className={`lg:col-span-2 rounded-2xl sm:rounded-3xl border p-4 sm:p-6 md:p-8 ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
+          className={`lg:col-span-2 rounded-3xl border p-6 md:p-8 shadow-sm ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
         >
-          <h3
-            className={`text-xs sm:text-sm font-black uppercase tracking-wider mb-5 sm:mb-6 flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
-          >
-            <BarChart3 size={16} className="text-blue-500" /> Distribución
-            Logística del Inventario
-          </h3>
+          <div className="flex items-center justify-between mb-8">
+            <h3
+              className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+            >
+              <BarChart3 size={18} className="text-blue-500" /> Marcas Más
+              Importadas
+            </h3>
+          </div>
 
-          <div className="space-y-5 sm:space-y-6">
-            <div>
-              <div className="flex justify-between text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2">
-                <span
-                  className={isDarkMode ? "text-slate-300" : "text-slate-700"}
-                >
-                  Disponibles en Japón
-                </span>
-                <span className="text-slate-400">45 Unidades (53%)</span>
-              </div>
-              <div
-                className={`h-2 sm:h-3 w-full rounded-full overflow-hidden ${isDarkMode ? "bg-slate-800" : "bg-slate-100"}`}
-              >
-                <div
-                  className="h-full bg-emerald-500 rounded-full"
-                  style={{ width: "53%" }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2">
-                <span
-                  className={isDarkMode ? "text-slate-300" : "text-slate-700"}
-                >
-                  En Tránsito Marítimo
-                </span>
-                <span className="text-slate-400">32 Unidades (38%)</span>
-              </div>
-              <div
-                className={`h-2 sm:h-3 w-full rounded-full overflow-hidden ${isDarkMode ? "bg-slate-800" : "bg-slate-100"}`}
-              >
-                <div
-                  className="h-full bg-amber-500 rounded-full"
-                  style={{ width: "38%" }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2">
-                <span
-                  className={isDarkMode ? "text-slate-300" : "text-slate-700"}
-                >
-                  Entregados (Este Mes)
-                </span>
-                <span className="text-slate-400">7 Unidades (9%)</span>
-              </div>
-              <div
-                className={`h-2 sm:h-3 w-full rounded-full overflow-hidden ${isDarkMode ? "bg-slate-800" : "bg-slate-100"}`}
-              >
-                <div
-                  className="h-full bg-blue-500 rounded-full"
-                  style={{ width: "9%" }}
-                ></div>
-              </div>
-            </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data?.charts?.marcas || []}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke={isDarkMode ? "#334155" : "#e2e8f0"}
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fill: isDarkMode ? "#94a3b8" : "#64748b",
+                    fontSize: 12,
+                    fontWeight: "bold",
+                  }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fill: isDarkMode ? "#94a3b8" : "#64748b",
+                    fontSize: 12,
+                  }}
+                />
+                <RechartsTooltip
+                  cursor={{ fill: isDarkMode ? "#1e293b" : "#f1f5f9" }}
+                  contentStyle={{
+                    borderRadius: "16px",
+                    border: "none",
+                    backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
+                    color: isDarkMode ? "#fff" : "#000",
+                    fontWeight: "bold",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                  }}
+                />
+                <Bar
+                  dataKey="Total"
+                  fill="#f59e0b"
+                  radius={[6, 6, 0, 0]}
+                  barSize={40}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
+        {/* GRÁFICA DE PASTEL: DISTRIBUCIÓN LOGÍSTICA */}
         <div
-          className={`rounded-2xl sm:rounded-3xl border p-4 sm:p-6 md:p-8 flex flex-col justify-center items-center text-center ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
+          className={`rounded-3xl border p-6 md:p-8 shadow-sm flex flex-col ${isDarkMode ? "bg-[#1e293b]/40 border-slate-800/60" : "bg-white border-slate-200"}`}
         >
-          <PieChart
-            size={40}
-            className="sm:w-12 sm:h-12 text-indigo-500 mb-3 sm:mb-4 opacity-80"
-          />
-          <h3
-            className={`text-2xl sm:text-3xl font-black ${isDarkMode ? "text-white" : "text-slate-900"}`}
-          >
-            Top Marcas
-          </h3>
-          <p className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1 sm:mt-2 mb-4 sm:mb-6">
-            Demanda por fabricante (Mes actual)
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <h3
+              className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}
+            >
+              <PieChart size={18} className="text-amber-500" /> Estado Logístico
+            </h3>
+          </div>
 
-          <div className="w-full space-y-2 sm:space-y-3">
-            <div
-              className={`flex justify-between items-center p-2.5 sm:p-3 rounded-xl border ${isDarkMode ? "border-slate-700 bg-[#0b121f]/50" : "border-slate-100 bg-slate-50"}`}
-            >
-              <span className="text-[10px] sm:text-xs font-bold text-slate-500">
-                Toyota
-              </span>
-              <span
-                className={`text-[10px] sm:text-xs font-black ${isDarkMode ? "text-white" : "text-slate-800"}`}
-              >
-                45%
-              </span>
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={data?.charts?.estados || []}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {(data?.charts?.estados || []).map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "none",
+                      backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
+                      color: isDarkMode ? "#fff" : "#000",
+                      fontWeight: "bold",
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                    }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
             </div>
-            <div
-              className={`flex justify-between items-center p-2.5 sm:p-3 rounded-xl border ${isDarkMode ? "border-slate-700 bg-[#0b121f]/50" : "border-slate-100 bg-slate-50"}`}
-            >
-              <span className="text-[10px] sm:text-xs font-bold text-slate-500">
-                Honda
-              </span>
-              <span
-                className={`text-[10px] sm:text-xs font-black ${isDarkMode ? "text-white" : "text-slate-800"}`}
-              >
-                30%
-              </span>
-            </div>
-            <div
-              className={`flex justify-between items-center p-2.5 sm:p-3 rounded-xl border ${isDarkMode ? "border-slate-700 bg-[#0b121f]/50" : "border-slate-100 bg-slate-50"}`}
-            >
-              <span className="text-[10px] sm:text-xs font-bold text-slate-500">
-                Daihatsu
-              </span>
-              <span
-                className={`text-[10px] sm:text-xs font-black ${isDarkMode ? "text-white" : "text-slate-800"}`}
-              >
-                15%
-              </span>
+
+            <div className="mt-4 space-y-2">
+              {(data?.charts?.estados || []).map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center text-xs font-bold"
+                >
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                    ></span>
+                    {item.name}
+                  </div>
+                  <span
+                    className={isDarkMode ? "text-white" : "text-slate-800"}
+                  >
+                    {item.value} Unidades
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
