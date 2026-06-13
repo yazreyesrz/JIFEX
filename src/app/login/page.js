@@ -95,7 +95,7 @@ export default function LoginPage() {
             {t("login.evaluator_access", "Accesos de Prueba")}
           </p>
           <div className="space-y-1.5 font-mono text-[10px] text-amber-500/80">
-            <p>• CLIENTE123 : jifex2026</p>
+            <p>• Min : 12345</p>
             <p>• MANAGERJIFEX: manager2026</p>
             <p>• ADMINJIFEX : admin2026</p>
           </div>
